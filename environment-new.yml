@@ -1,0 +1,31 @@
+name: automatic_control_2
+
+# Portable replacement for the original Intel-macOS environment export.
+# Keep the author's direct package versions, but let conda-forge choose the
+# platform-specific builds for Apple Silicon, Intel macOS, or Linux.
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+  # Runtime used by the original environment
+  - python=3.10.13
+  - pip=24.1.2
+
+  # Numerical computing and plotting
+  - numpy=1.26.3
+  - scipy=1.12.0
+  - pandas=2.2.0
+  - matplotlib=3.9.4
+  - sympy==1.12
+  - tqdm=4.65.0
+
+  # METANET model construction and nonlinear optimization
+  - pyomo=6.9.5
+  - ipopt=3.14.*
+
+  # Notebooks used by experiments/*.ipynb
+  - jupyterlab=4.1.5
+  - notebook=7.1.2
+  - ipykernel=6.29.2
+  - ipywidgets=8.1.2

@@ -4,10 +4,7 @@ import json
 import pyomo.environ as pyo
 
 import numpy as np
-import scipy.sparse as sp
 from traffic_sim import run_metanet_sim, _get_time_space_param
-import pandas as pd
-import pyomo.contrib.parmest.utils.ipopt_solver_wrapper as ipopt_solver_wrapper
 from pyomo.util.infeasible import log_infeasible_constraints
 import logging
 
@@ -416,7 +413,7 @@ def mpc_opt(
     # ------------------------------------------------------------------
     # Solver
     # ------------------------------------------------------------------
-    solver = pyo.SolverFactory('ipopt', executable='/usr/local/bin/ipopt')
+    solver = pyo.SolverFactory('ipopt')
 
     # solver.options['bound_relax_factor'] = 1e-8
     # solver.options['honor_original_bounds'] = 'yes'
@@ -445,11 +442,14 @@ def mpc_opt(
         # solver.options['acceptable_constr_viol_tol'] = 1e-6
 
     t0 = time.process_time()
-    status, _, iters, _, _ = ipopt_solver_wrapper.ipopt_solve_with_stats(
-        model, solver,
-        max_iter=40000, max_cpu_time=180,
-        warmstart=(init_vsl is not None), tee=tee,
-    )
+    # status, _, iters, _, _ = ipopt_solver_wrapper.ipopt_solve_with_stats(
+    #     model, solver,
+    #     max_iter=40000, max_cpu_time=180,
+    #     warmstart=(init_vsl is not None), tee=tee,
+    # )
+    status = solver.solve(model, options={'max_iter': 40000, 'max_cpu_time': 180}, tee=tee)
+    iters = 0
+
     solve_time = time.process_time() - t0
 
     # logging.basicConfig(level=logging.INFO)

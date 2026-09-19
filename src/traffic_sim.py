@@ -194,14 +194,25 @@ def metanet_step(t: int,
     return density_tp1, velocity_tp1, queue_tp1, flow_origin_tp1, flow_tp1
 
 
+from typing import TypedDict
+from typing_extensions import NotRequired
+
+class SimResult(TypedDict):
+    density: np.ndarray
+    velocity: np.ndarray
+    queue: np.ndarray
+    total_travel_time: float
+    flow_origin: NotRequired[np.ndarray]
+    V_fd: NotRequired[np.ndarray]
+
 def run_metanet_sim(T: float,
                     l: float,
                     init_traffic_state: Tuple[np.ndarray, np.ndarray, float, float],
                     demand: np.ndarray,
                     downstream_density: np.ndarray,
-                    params: Dict[str, np.ndarray],
+                    params: dict[str, np.ndarray[tuple, np.dtype[np.float64]]],
                     vsl_speeds: Optional[np.ndarray] = None,
-                    lanes: Optional[Dict[int, int]] = None,
+                    lanes: Optional[dict[int, int]] = None,
                     plotting: bool = False,
                     real_data: bool = False,
                     opt: bool = False):
@@ -284,9 +295,9 @@ def run_metanet_sim(T: float,
         V_fd = calculate_V_arr(
             density[0:-1],
             vsl_speeds,
-            params["a"],
-            params["p_crit"],
-            params["v_free"],
+            params["a"].item(),
+            params["p_crit"].item(),
+            params["v_free"].item(),
         )
         return density, velocity, queue, flow_origin, V_fd, total_travel_time
     else:

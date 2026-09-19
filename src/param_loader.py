@@ -1,21 +1,20 @@
 import numpy as np
-import pandas as pd
 import os
 
 class METANET_Params:
     def __init__(self, path=None, control_h=None, num_timesteps=360, num_segments=14):
         if path is not None and control_h is not None:
-            self.params = {
-                "tau": None,
-                "K": None,
-                "eta_high": None,
-                "p_crit": None,
-                "v_free": None,
-                "a": None,
-                'q_capacity': None,
-                'r': None,
-                'beta': None,
-                'gamma': None
+            self.params: dict[str, np.ndarray] = {
+                "tau": np.array(0),
+                "K": np.array(0),
+                "eta_high": np.array(0),
+                "p_crit": np.array(0),
+                "v_free": np.array(0),
+                "a": np.array(0),
+                'q_capacity': np.array(0),
+                'r': np.array(0),
+                'beta': np.array(0),
+                'gamma': np.array(0)
             }
             
             num_params = int(num_timesteps/control_h)
