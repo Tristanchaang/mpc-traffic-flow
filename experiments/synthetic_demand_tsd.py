@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.join(REPO, "src"))
 
 from paths import fig, synthetic_results         # noqa: E402
 from param_loader import METANET_Params          # noqa: E402
-from traffic_sim import run_metanet_sim          # noqa: E402
+from traffic_sim import run_metanet_sim, run_metanet_sim_plottable          # noqa: E402
 
 DEMAND_DIR = synthetic_results("demand")
 SAVE_PATH = fig("synthetic_demand_tsd.png")
@@ -89,9 +89,9 @@ def run_scenario(peak_demand, params):
                    demand[0],
                    0)
 
-    _, v_uc, _, tts_uc = run_metanet_sim(
+    _, v_uc, _, tts_uc = run_metanet_sim_plottable(
         TIME_STEP, SEG_LENGTH, start_state, demand, np.zeros(time_steps),
-        params, lanes=LANES, real_data=False, vsl_speeds=None, plotting=True,
+        params, lanes=LANES, real_data=False, vsl_speeds=None,
     )
 
     policy = os.path.join(DEMAND_DIR, f"demand{float(peak_demand)}_duration{PEAK_DURATION}.csv")
@@ -105,11 +105,11 @@ def run_scenario(peak_demand, params):
     while len(demand_padded) < mpc_time_steps + 1:
         demand_padded = np.append(demand_padded, demand_padded[-1])
 
-    _, v_c, _, tts_c = run_metanet_sim(
+    _, v_c, _, tts_c = run_metanet_sim_plottable(
         TIME_STEP, SEG_LENGTH, start_state,
         demand_padded[0:time_steps], np.zeros(mpc_time_steps + 1)[0:time_steps],
         params, lanes=LANES, vsl_speeds=optimal_vsl,
-        real_data=False, plotting=True,
+        real_data=False, 
     )
 
     ff = free_flow_tts(demand, float(params["v_free"][0]))
@@ -139,7 +139,6 @@ def plot(results, save_path=SAVE_PATH):
     vmin, vmax = 0, 120
 
     panel_labels = "abcdefgh"
-    im = None
     for row, res in enumerate(results):
         for col, (key, title) in enumerate(
             [("v_uc", "No control"), ("v_c", "Optimal speed limit control")]
@@ -171,7 +170,7 @@ def plot(results, save_path=SAVE_PATH):
                 lab.set_fontname("Times New Roman")
 
     fig.subplots_adjust(right=0.88, hspace=0.28, wspace=0.08)
-    cbar_ax = fig.add_axes([0.90, 0.12, 0.02, 0.76])
+    cbar_ax = fig.add_axes((0.90, 0.12, 0.02, 0.76))
     cbar = fig.colorbar(im, cax=cbar_ax)
     cbar.set_label("Velocity (km/hr)", fontsize=TEXT_FONTSIZE - 2,
                    fontname="Times New Roman")

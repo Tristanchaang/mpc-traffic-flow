@@ -19,7 +19,7 @@ _SRC_DIR = os.path.join(_THIS_DIR, "..", "src")
 if _SRC_DIR not in sys.path:
     sys.path.append(_SRC_DIR)
 
-from traffic_sim import run_metanet_sim
+from traffic_sim import run_metanet_sim, run_metanet_sim_plottable
 
 
 def _vsl_path(results_path, safety_temporal, safety_spatial):
@@ -61,11 +61,11 @@ def load_sweep_results(
                 print(f"Warning: failed to load {path}: {exc}")
                 continue
 
-            _, _, _, tts = run_metanet_sim(
+            _, _, _, tts = run_metanet_sim_plottable(
                 time_step, L, init_state,
                 demand[start_time:], downstream_density[start_time:],
                 model_params, lanes=lane_dict, vsl_speeds=vsl,
-                plotting=True, real_data=False,
+                 real_data=False,
             )
 
             vsl_for_roughness = vsl[:, control_zone] if control_zone is not None else vsl
@@ -145,7 +145,7 @@ def plot_tts_heatmap(
     if ax is None:
         _, ax = plt.subplots(figsize=(7, 6))
 
-    cmap = copy.copy(plt.cm.viridis)
+    cmap = copy.copy(plt.get_cmap("viridis"))
     cmap.set_bad(color="lightgray")
     masked = np.ma.masked_invalid(grid)
 

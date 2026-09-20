@@ -1,8 +1,16 @@
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
+preset_figsizes = {
+  (1, 1): (10, 5),
+  (1, 2): (15, 5),
+  (1, 3): (17, 5)
+}
+
 class Plotter:
-  def __init__(self, rows: int, cols: int, figsize: tuple[float, float]):
+  def __init__(self, rows: int, cols: int, figsize = None):
+    if figsize is None and (rows, cols) in preset_figsizes: 
+      figsize = preset_figsizes[(rows, cols)]
     self.rows = rows
     self.cols = cols
     self.fig, self.axs = plt.subplots(rows, cols, figsize = figsize)

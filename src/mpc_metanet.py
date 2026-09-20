@@ -159,7 +159,7 @@ def mpc_opt(
             T, l, starting_traffic_vars,
             traffic_demand[0:horizon_p+1], downstream_density[0:horizon_p],
             params, lanes=lanes,
-            vsl_speeds=init_vsl[0:horizon_p, :], opt=True, real_data=False,
+            vsl_speeds=init_vsl[0:horizon_p, :], real_data=False,
         )
         v_fd_ws = np.minimum(v_fd_ws[0:horizon_p, :], init_vsl[0:horizon_p, :])
 

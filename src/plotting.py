@@ -6,7 +6,7 @@ def plot_vsls(vsl_matrix: np.ndarray, time_steps: int, num_segm: int, v_free: fl
     Given a matrix of VSL speeds, plot the VSL speeds as a heatmap. 
     (0,0) is the top left corner of the matrix. Rows represent time steps and columns represent segments.
     '''
-    p = Plotter(1, 1, figsize=(20, 10))
+    p = Plotter(1, 1)
     p.fig.colorbar(
       p[0].imshow(vsl_matrix.T, cmap='RdYlGn', aspect='auto', interpolation='none', vmin=0, vmax=v_free),
       label='VSL speed (km/hr)'

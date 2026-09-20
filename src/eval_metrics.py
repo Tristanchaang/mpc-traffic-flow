@@ -2,8 +2,18 @@ import numpy as np
 import traffic_sim as sim
 from param_loader import METANET_Params
 import csv
+import plotting
 
+def generate_perturbations(signal, percent_noise=0.1, seed=0, num=100):
+    # Add noise_std percent gaussian noise to the whole signal
+    rng = np.random.default_rng(seed)
+    # noise = np.random.normal(0, signal.std(), signal.size)
+    sigma = percent_noise * np.std(signal) / 100
+    noise = rng.normal(loc=0.0, scale=sigma, size=(num, *signal.shape))
+    perturbed = signal[None, ...] + noise  # broadcast signal across `num`
+    return perturbed
 
+'''
 def mape(flow_hat, flow_pred):
     """
     Compute the Mean Absolute Percentage Error (MAPE) between ground truth and prediction.
@@ -50,25 +60,11 @@ def J_cost(v_sim, v_hat, p_sim, p_hat, T):
     x_hat = np.hstack((v_hat[0:T, :], p_hat[0:T, :]))
     return np.sum((x_sim - x_hat)**2)
 
-def generate_perturbations(signal, percent_noise=0.1, seed=0, num=100):
-    # Add noise_std percent gaussian noise to the whole signal
-
-    # x = np.asarray(signal, dtype=float)
-
-    rng = np.random.default_rng(seed)
-
-    # noise = np.random.normal(0, signal.std(), signal.size)
-    sigma = percent_noise * np.std(signal) / 100
-    noise = rng.normal(loc=0.0, scale=sigma, size=(num, *signal.shape))
-    perturbed = signal[None, ...] + noise  # broadcast signal across `num`
-    return perturbed
-
-
 def eval_robustness_static(v_gt, params, data_inflow, downstream_density, init_state, lanes, 
                            T=10/3600, l=0.4, percent_noises=[0.1], plotting_dir=None, save_results=False, rho_gt=None):
     noise_results = []
     for percent_noise in percent_noises:
-        true_rho_sim, true_v_sim, _, _ = sim.run_metanet_sim(T,
+        true_rho_sim, true_v_sim, _, _ = sim.run_metanet_sim_plottable(T,
                                         l,
                                         init_state,
                                         data_inflow,
@@ -76,7 +72,6 @@ def eval_robustness_static(v_gt, params, data_inflow, downstream_density, init_s
                                         params, 
                                         vsl_speeds=None,
                                         lanes=lanes,
-                                        plotting=True,
                                         real_data=True)
         true_error = mape(v_gt, true_v_sim[0:-1, :])
 
@@ -90,7 +85,7 @@ def eval_robustness_static(v_gt, params, data_inflow, downstream_density, init_s
 
 
         for perturbed_conditions in generate_perturbations(data_inflow, percent_noise=percent_noise):
-            rho_sim, v_sim, _, _ = sim.run_metanet_sim(T,
+            rho_sim, v_sim, _, _ = sim.run_metanet_sim_plottable(T,
                                         l,
                                         init_state,
                                         perturbed_conditions,
@@ -98,7 +93,6 @@ def eval_robustness_static(v_gt, params, data_inflow, downstream_density, init_s
                                         params, 
                                         vsl_speeds=None,
                                         lanes=lanes,
-                                        plotting=True,
                                         real_data=True)
             
             error = mape(v_gt, v_sim[0:-1, :])
@@ -158,7 +152,7 @@ def eval_robustness_dynamic(v_gt, control_len, params_dir, data_inflow, downstre
         
 
         
-        true_rho_sim, true_v_sim, _, _ = sim.run_metanet_sim(T,
+        true_rho_sim, true_v_sim, _, _ = sim.run_metanet_sim_plottable(T,
                                         l,
                                         init_traffic_state,
                                         data_inflow,
@@ -166,7 +160,6 @@ def eval_robustness_dynamic(v_gt, control_len, params_dir, data_inflow, downstre
                                         params, 
                                         vsl_speeds=None,
                                         lanes=lanes,
-                                        plotting=True,
                                         real_data=True)
         true_rho_sim = true_rho_sim[0:-1, :]
         true_v_sim = true_v_sim[0:-1, :]
@@ -263,3 +256,4 @@ def plot_worst_case_simulations(v_gt, control_len, params_dir, data_inflow, down
                 worst_error = error
         
         plotting.plot_sim_vs_gt(v_gt, worst_v_sim, T, l, percent_noise, save_dir=mpc.mpc_results_dir(params_dir, control_len) + "/figs")
+'''

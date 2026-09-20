@@ -54,6 +54,7 @@ def warm_starts_hold_len(i, sim_time, num_segments, params, control_zone, path=N
 
     try:
         divisors_list = divisors(sim_time)
+        assert isinstance(divisors_list, list)
         ind_i = divisors_list.index(i)
         if ind_i > 0:
             hold_len_prev = divisors_list[ind_i - 1]
@@ -74,6 +75,7 @@ def warm_starts_hold_len(i, sim_time, num_segments, params, control_zone, path=N
 
     try:
         divisors_list = divisors(sim_time)
+        assert isinstance(divisors_list, list)
         ind_i = divisors_list.index(i)
         hold_len_after = divisors_list[ind_i + 1]
         print(hold_len_after)
@@ -117,6 +119,7 @@ def warm_starts_hold_len_shifted(i, sim_time, num_segments, params, control_zone
 
     try:
         divisors_list = divisors(sim_time)
+        assert isinstance(divisors_list, list)
         ind_i = divisors_list.index(i)
         if ind_i > 0:
             hold_len_prev = divisors_list[ind_i - 1]

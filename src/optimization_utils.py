@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from eval_metrics import generate_perturbations, mape, rmse
+from eval_metrics import generate_perturbations
 from pyomo.environ import (
     ConcreteModel,
     RangeSet,
@@ -139,7 +139,7 @@ def fit_fd1(
         C_i = np.mean(sorted(flattened_q_hat)[-top_k_for_C:])
 
     # Build Pyomo model
-    model = ConcreteModel()
+    model = ConcreteModel(); assert isinstance(model, ConcreteModel)
     model.k = RangeSet(0, K - 1)
 
     # Parameters
@@ -178,10 +178,11 @@ def fit_fd1(
     solver.solve(model, tee=False)
 
     # Extract parameters
-    rho_crit_opt = value(model.rho_crit)
-    V_free_opt = value(model.V_free)
-    a_opt = value(model.a)
-    C_opt = value(model.C)
+    rho_crit_opt = value(model.rho_crit); assert isinstance(rho_crit_opt, float)
+    V_free_opt = value(model.V_free); assert isinstance(V_free_opt, float)
+    a_opt = value(model.a); assert isinstance(a_opt, float)
+    C_opt = value(model.C); assert isinstance(C_opt, float)
+    
 
     # Define fitted FD1 function
     def Q_fd1(rho):
@@ -265,7 +266,8 @@ def metanet_param_fit(
     # print(initial_flow_or.shape)
     # print(downstream_density.shape)
 
-    model = ConcreteModel()
+    model = ConcreteModel(); assert isinstance(model, ConcreteModel)
+
     model.t = RangeSet(0, num_timesteps - 1)
     # model.t_loss = RangeSet(0, num_timesteps - 1, 10)
     model.i = RangeSet(0, num_segments - 1)
@@ -736,7 +738,7 @@ def metanet_param_fit_robust(
     # inflow_s = np.clip(inflow_s, 1e-3, None)
 
 
-    m = ConcreteModel()
+    m = ConcreteModel(); assert isinstance(m, ConcreteModel)
     m.s = RangeSet(0, S - 1)
     m.t = RangeSet(0, num_timesteps - 1)
     m.i = RangeSet(0, num_segments - 1)
@@ -1097,15 +1099,15 @@ def run_calibration(
 
     # Initialize results storage
     results = {
-        "v_pred": [],
-        "rho_pred": [],
+        "v_pred": np.array([]),
+        "rho_pred": np.array([]),
         "tau": [],
         "K": [],
         "eta_high": [],
-        "rho_crit": [],
-        "v_free": [],
-        "a": [],
-        "num_lanes": [],
+        "rho_crit": np.array([]),
+        "v_free": np.array([]),
+        "a": np.array([]),
+        "num_lanes": np.array([]),
     }
         # results["gamma"] = []
     results["beta"] = []
@@ -1177,7 +1179,7 @@ def run_calibration(
         assert isinstance(robust_opt, RobustOptConfig)
         assert robust_opt.objective_mode in ["minmax", "mean_plus_worst", "mean"]
 
-        res_model = metanet_param_fit_robust(
+        res_model: ConcreteModel = metanet_param_fit_robust(
             segment_v_hat,
             segment_rho_hat,
             segment_q_hat,
