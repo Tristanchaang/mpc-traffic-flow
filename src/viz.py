@@ -22,12 +22,10 @@ class Plotter:
     for key, value in kwargs.items(): getattr(self[id], "set_" + key)(value)
 
   def __iter__(self):
-    for i in range(self.rows * self.cols):
-      yield self[i]
+    for i in range(self.rows * self.cols): yield self[i]
 
   def show(self):
     for ax in self: 
-      if ax.get_legend() is not None:
-        ax.legend()
+      if ax.get_legend() is not None: ax.legend()
     plt.tight_layout()
     plt.show()

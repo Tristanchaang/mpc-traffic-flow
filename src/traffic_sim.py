@@ -198,6 +198,16 @@ def run_metanet_sim_plottable(*args, **kwargs) -> Tuple[np.ndarray, np.ndarray, 
     assert(len(x) == 4)
     return x
 
+def run_metanet_sim_end(*args, **kwargs) -> Tuple[Tuple[float, float, float, float], float]:
+    x = run_metanet_sim(*args, **kwargs, plotting=False, opt=False)
+    assert(len(x) == 2 and len(x[0]) == 4)
+    return x
+
+def run_metanet_sim_opt(*args, **kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+    x = run_metanet_sim(*args, **kwargs, plotting=False, opt=True)
+    assert(len(x) == 6)
+    return x
+
 def run_metanet_sim(T: float,
                     l: float,
                     init_traffic_state: Tuple[np.ndarray, np.ndarray, float, float],

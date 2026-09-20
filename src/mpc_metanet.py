@@ -4,7 +4,7 @@ import json
 import pyomo.environ as pyo
 
 import numpy as np
-from traffic_sim import run_metanet_sim, _get_time_space_param, run_metanet_sim_plottable
+from traffic_sim import run_metanet_sim, _get_time_space_param, run_metanet_sim_end, run_metanet_sim_plottable, run_metanet_sim_opt
 from pyomo.util.infeasible import log_infeasible_constraints
 import logging
 
@@ -24,11 +24,11 @@ def mpc_opt_shooting(T, l, num_segments, traffic_demand, downstream_density,
         vsl = vsl_flat.reshape(horizon_p, num_segments)
         # clip to bounds before simulating
         vsl = np.clip(vsl, speed_lb, 150)
-        density, velocity, flow_or, queue = run_metanet_sim(
+        density, velocity, flow_or, queue = run_metanet_sim_end(
             T, l, starting_traffic_vars,
             traffic_demand, downstream_density,
             params, vsl_speeds=vsl, lanes=lanes, real_data=False
-        )
+        )[0]
         tts = T * np.sum(density * lanes * l) + T * np.sum(queue)
         return tts
 
@@ -114,7 +114,8 @@ def mpc_opt(
     # ------------------------------------------------------------------
     # Model
     # ------------------------------------------------------------------
-    model = pyo.ConcreteModel()
+    model = pyo.ConcreteModel() 
+    assert isinstance(model, pyo.ConcreteModel)
 
     def vsl_bounds(model, h, m):
         if control_zone is not None and m not in control_zone:
@@ -154,7 +155,7 @@ def mpc_opt(
     # Warm-start initialisation
     # ------------------------------------------------------------------
     if init_vsl is not None:
-        density_ws, velocity_ws, queue_ws, flow_or_ws, v_fd_ws, _ = run_metanet_sim(
+        density_ws, velocity_ws, queue_ws, flow_or_ws, v_fd_ws, _ = run_metanet_sim_opt(
             T, l, starting_traffic_vars,
             traffic_demand[0:horizon_p+1], downstream_density[0:horizon_p],
             params, lanes=lanes,

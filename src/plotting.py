@@ -16,7 +16,7 @@ def plot_vsls(vsl_matrix: np.ndarray, time_steps: int, num_segm: int, v_free: fl
             'yticks': np.arange(0, num_segm, 2), 'yticklabels': np.round(np.arange(0, num_segm*l, 2*l), 2)}
     p[0].invert_yaxis()
     p[0].grid()
-    plt.show()
+    p.show()
 
 def plot_outflow(traffic_demand, downstream_density, vsl_control, lane_map, v_free, T=10/3600, l=500/1000, seg=0):
     time_steps, num_segm = vsl_control.shape
@@ -31,16 +31,15 @@ def plot_outflow(traffic_demand, downstream_density, vsl_control, lane_map, v_fr
     outflow_opt = v_optimal * p_optimal * lane_array
     outflow_nocontrol = v_nocontrol * p_nocontrol * lane_array
 
-    plt.plot(outflow_opt[:, seg], label='Optimal')
-    plt.plot(outflow_nocontrol[:, seg], label='No Control')
-    plt.xlabel('Time (min)')
-    plt.ylabel('Flow (veh/hr)')
-    plt.xticks(np.arange(0, time_steps, 120), (np.arange(0, time_steps * T * 60, 120 * T * 60)).astype(int))
-    plt.title(f'Flow out of segment {seg}')
-    plt.axhline(y=2200 * lane_map[seg+1], color='r', linestyle='--', label='Capacity of next segment')
-    
-    plt.legend()
-    plt.show()
+    p = Plotter(1, 1, figsize=(20, 10))
+    p[0] = {'title': f'Flow out of segment {seg}',
+            'xlabel': 'Time (min)', 'ylabel': 'Flow (veh/hr)', 
+            'xticks': np.arange(0, time_steps, 120), 'xticklabels': (np.arange(0, time_steps * T * 60, 120 * T * 60)).astype(int),}
+    p[0].plot(outflow_opt[:, seg], label='Optimal')
+    p[0].plot(outflow_nocontrol[:, seg], label='No Control')
+    p[0].axhline(y=2200 * lane_map[seg+1], color='r', linestyle='--', label='Capacity of next segment')
+    p[0].legend()
+    p.show()
 
 def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane_map, v_free, T=10/3600, l=500/1000, plot_v=True, plot_p=False, plot_q=False, params=None):
     plot_var = np.array([plot_v, plot_p, plot_q])
@@ -71,9 +70,9 @@ def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane
                                                 real_data=False,
                                                 lanes=lane_map,
                                                 vsl_speeds=vsl_control)
-    # else:
-    #     p_nocontrol, v_nocontrol,  queue_nocontrol, tts_nocontrol= metanet_sim(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, plotting=True, lanes=lane_map)
-    #     p_optimal, v_optimal,   queue_optimal, tts_optimal, = metanet_sim(T, l, start_state, vsl_control, traffic_demand, downstream_density, plotting=True, lanes=lane_map)
+    else:
+        p_nocontrol, v_nocontrol,  queue_nocontrol, tts_nocontrol= np.array([0, 0, 0, 0])#metanet_sim(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, plotting=True, lanes=lane_map)
+        p_optimal, v_optimal,   queue_optimal, tts_optimal, = np.array([0, 0, 0, 0])#metanet_sim(T, l, start_state, vsl_control, traffic_demand, downstream_density, plotting=True, lanes=lane_map)
 
     total_inflow = np.sum(np.array(traffic_demand[0:time_steps]) * T)
     freeflow_tts = total_inflow * (num_segm * l) / v_free
@@ -103,7 +102,7 @@ def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane
         #increase font size of colorbar
         cbar.set_label('Velocity (km/hr)', fontsize=22, fontname='Times New Roman')
         for tick in cbar.ax.get_yticklabels():
-            tick.set_family("Times New Roman")
+            # tick.set_family("Times New Roman")
             tick.set_fontsize(20)
         # cbar.ax.set_aspect(30)
 
