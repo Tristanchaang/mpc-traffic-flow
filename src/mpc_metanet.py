@@ -4,7 +4,7 @@ import json
 import pyomo.environ as pyo
 
 import numpy as np
-from traffic_sim import run_metanet_sim, _get_time_space_param
+from traffic_sim import run_metanet_sim, _get_time_space_param, run_metanet_sim_plottable
 from pyomo.util.infeasible import log_infeasible_constraints
 import logging
 
@@ -479,11 +479,11 @@ def mpc_opt(
                                     for m in seg_range] 
                                     for h in range(1, horizon_c)])
 
-    actual_density, actual_velocity, _, _ = run_metanet_sim(
+    actual_density, actual_velocity, _, _ = run_metanet_sim_plottable(
         T, l, starting_traffic_vars,
         traffic_demand[0: horizon_c+1],
         downstream_density[0: horizon_c],
-        params, vsl_speeds=vsl_speeds_c, lanes=lanes, real_data=False, plotting=True
+        params, vsl_speeds=vsl_speeds_c, lanes=lanes, real_data=False
     )
 
     density_error = np.abs(predicted_density - actual_density[1:-1]).mean()
@@ -515,7 +515,7 @@ def mpc_find_vsl(
     control_changepoints=None, safety_temporal=None, safety_spatial=None,
     params=None, verbose=False,
     speed_lb=40, v_fd_penalty=0.1, control_zone=None, warmup_time=0, tee=False
-):
+) -> np.ndarray:
     t     = 0
     state = init_state if init_state is not None else (
         np.array([traffic_demand[0] / (lanes[i] * 90) for i in range(num_segments)]),

@@ -1,39 +1,29 @@
-import matplotlib.pyplot as plt
-import numpy as np
 from traffic_sim import *
+from viz import *
 
-def plot_vsls(vsl_matrix, time_steps, num_segm, v_free, T=10/3600, l=0.5):
+def plot_vsls(vsl_matrix: np.ndarray, time_steps: int, num_segm: int, v_free: float, T=10/3600, l=0.5):
     '''
     Given a matrix of VSL speeds, plot the VSL speeds as a heatmap. 
     (0,0) is the top left corner of the matrix. Rows represent time steps and columns represent segments.
     '''
-    # Plot the optimal vsl matrix in a heatmap
-    plt.figure(figsize=(10, 5))
-    plt.imshow(vsl_matrix.T, cmap='RdYlGn', interpolation='nearest', aspect='auto', vmax=v_free, vmin=0)
-    # Scale y axis labels by 3/10
-    plt.yticks(np.arange(0, num_segm, 2), np.round(np.arange(0, num_segm*l, 2*l), 2), fontsize=14)
-    # Scale x axis labels by 1/6
-    plt.xticks(np.arange(0, time_steps, 60), (np.arange(0, time_steps * T * 60, 60 * T * 60)).astype(int), fontsize=14)
-
-    # Label x and y axes
-    plt.xlabel('Time (min)', fontsize=16)
-    plt.ylabel('Distance (km)', fontsize=16)
-    # Label the colorbar
-    cbar = plt.colorbar(label='VSL speed (km/hr)')
-    cbar.ax.tick_params(labelsize=14)
-    cbar.set_label('VSL speed (km/hr)', fontsize=16)
-    # Reorient so that (0,0) in the matrix is coordinate (0,0) in the plot
-    # Make the y axis longer so that the aspect ratio is correct
-    plt.gca().invert_yaxis()
-    plt.grid()
+    p = Plotter(1, 1, figsize=(20, 10))
+    p.fig.colorbar(
+      p[0].imshow(vsl_matrix.T, cmap='RdYlGn', aspect='auto', interpolation='none', vmin=0, vmax=v_free),
+      label='VSL speed (km/hr)'
+    )
+    p[0] = {'title': 'Optimal VSL Speeds', 'xlabel': 'Time Step', 'ylabel': 'Distance (km)',
+            'xticks': np.arange(0, time_steps, 60), 'xticklabels': (np.arange(0, time_steps * T * 60, 60 * T * 60)).astype(int),
+            'yticks': np.arange(0, num_segm, 2), 'yticklabels': np.round(np.arange(0, num_segm*l, 2*l), 2)}
+    p[0].invert_yaxis()
+    p[0].grid()
     plt.show()
 
 def plot_outflow(traffic_demand, downstream_density, vsl_control, lane_map, v_free, T=10/3600, l=500/1000, seg=0):
     time_steps, num_segm = vsl_control.shape
 
     start_state =  (np.full(num_segm, 0), np.full(num_segm, 0), traffic_demand[0], 0)
-    p_nocontrol, v_nocontrol, tts_nocontrol, queue_nocontrol= run_metanet_sim(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, plotting=True, lanes=lane_map)
-    p_optimal, v_optimal, tts_optimal, queue_optimal = run_metanet_sim(T, l, start_state, vsl_control, traffic_demand, downstream_density, plotting=True, lanes=lane_map)
+    p_nocontrol, v_nocontrol, queue_nocontrol, tts_nocontrol = run_metanet_sim_plottable(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, lanes=lane_map)
+    p_optimal, v_optimal, queue_optimal, tts_optimal = run_metanet_sim_plottable(T, l, start_state, vsl_control, traffic_demand, downstream_density, lanes=lane_map)
     improvement_tts = round((tts_nocontrol - tts_optimal)/tts_nocontrol * 100, 1)
 
     lane_list = np.array(list(lane_map.values()))
@@ -63,7 +53,7 @@ def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane
     start_state = (np.full(num_segm, traffic_demand[0]/(lane_map[0] * 90)), np.full(num_segm, 90), traffic_demand[0], 0)
     
     if params is not None:
-        p_nocontrol, v_nocontrol, queue_nocontrol, tts_nocontrol= run_metanet_sim(T,
+        p_nocontrol, v_nocontrol, tts_nocontrol, queue_nocontrol= run_metanet_sim_plottable(T,
                                                 l,
                                                 start_state,
                                                 traffic_demand,
@@ -71,9 +61,8 @@ def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane
                                                 params,
                                                 real_data=False,
                                                 lanes=lane_map,
-                                                plotting=True,
                                                 vsl_speeds=None)
-        p_optimal, v_optimal,  queue_optimal, tts_optimal = run_metanet_sim(T,
+        p_optimal, v_optimal, tts_optimal,  queue_optimal = run_metanet_sim_plottable(T,
                                                 l,
                                                 start_state,
                                                 traffic_demand,
@@ -81,11 +70,10 @@ def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane
                                                 params,
                                                 real_data=False,
                                                 lanes=lane_map,
-                                                plotting=True,
                                                 vsl_speeds=vsl_control)
-    else:
-        p_nocontrol, v_nocontrol,  queue_nocontrol, tts_nocontrol= metanet_sim(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, plotting=True, lanes=lane_map)
-        p_optimal, v_optimal,   queue_optimal, tts_optimal, = metanet_sim(T, l, start_state, vsl_control, traffic_demand, downstream_density, plotting=True, lanes=lane_map)
+    # else:
+    #     p_nocontrol, v_nocontrol,  queue_nocontrol, tts_nocontrol= metanet_sim(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, plotting=True, lanes=lane_map)
+    #     p_optimal, v_optimal,   queue_optimal, tts_optimal, = metanet_sim(T, l, start_state, vsl_control, traffic_demand, downstream_density, plotting=True, lanes=lane_map)
 
     total_inflow = np.sum(np.array(traffic_demand[0:time_steps]) * T)
     freeflow_tts = total_inflow * (num_segm * l) / v_free

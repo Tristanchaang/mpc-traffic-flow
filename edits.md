@@ -44,6 +44,23 @@ optimal_vsl_54.npy doesn't exist on the repo, so I changed it to optimal_vsl.npy
 ```
 `velocity_data` with `[1:-1]` makes it have 12 segments instead of 14 (total including boundary should be 16)
 
-4. traffic_sim.py:
+5. metanet_calibration.ipynb
 
-Added `SimResult` class
+```diff
+-plt.plot(r_inflow_array[:, 1])
++plt.plot(r_inflow_array)
+
+-param_array = mpc_params[param][:, 6]
++param_array = params[param][:]
+```
+
+6. plotting.py
+
+```diff
+-p_nocontrol, v_nocontrol, tts_nocontrol, queue_nocontrol= run_metanet_sim(...): ...
++p_nocontrol, v_nocontrol, queue_nocontrol, tts_nocontrol= run_metanet_sim(...): ...
+```
+
+7. viz.py
+
+Self class for plotting

@@ -32,15 +32,15 @@ import matplotlib.pyplot as plt
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
-from paths import fig, i24_results           # noqa: E402
+from paths import fig, I24_RESULTS, DEFAULT_CALIBRATION           # noqa: E402
 from cc_analysis import (                    # noqa: E402
     L, time_step,
     load_day_data, get_ff_tts,
 )
-from traffic_sim import run_metanet_sim      # noqa: E402
+from traffic_sim import run_metanet_sim_plottable      # noqa: E402
 
 DATE = "11_30"
-SWEEP_ROOT = i24_results(DATE)
+SWEEP_ROOT = I24_RESULTS / f"i24_{DATE}" / DEFAULT_CALIBRATION
 SAVE_PATH = fig("i24_constraints.png")
 HEATMAP_SAVE_PATH = fig("i24_safety_heatmap.png")
 
@@ -70,10 +70,10 @@ def load_baseline(date=DATE):
     day = load_day_data(date)
     params = day["static_params"]
 
-    _, _, _, tts_base = run_metanet_sim(
+    _, _, _, tts_base = run_metanet_sim_plottable(
         time_step, L, day["init_state"], day["data_inflow"],
         day["ds_density_norm"], params, lanes=day["lane_dict"],
-        vsl_speeds=None, plotting=True, real_data=True,
+        vsl_speeds=None, real_data=True,
     )
     v_free = params["v_free"]
     ff_ttt = get_ff_tts(day["data_inflow"], time_step, L,
@@ -91,10 +91,10 @@ def cc_for(path, day, params, delay_base, ff_ttt):
     vsl = np.load(path)
     if is_fallback(vsl):
         return None
-    _, _, _, tts = run_metanet_sim(
+    _, _, _, tts = run_metanet_sim_plottable(
         time_step, L, day["init_state"], day["data_inflow"],
         day["ds_density_norm"], params, lanes=day["lane_dict"],
-        vsl_speeds=vsl, plotting=True, real_data=False,
+        vsl_speeds=vsl, real_data=False,
     )
     return float(np.clip((delay_base - (tts - ff_ttt)) / delay_base * 100, 0, 100))
 
@@ -171,7 +171,7 @@ def slice_grid(grid, axis, fixed_value, max_value=None):
         counts = {}
         for key in in_range:
             counts[key[keep]] = counts.get(key[keep], 0) + 1
-        fixed_value = max(counts, key=counts.get)
+        fixed_value = max(counts, key=counts.__getitem__)
 
     pts = sorted((key[vary], cc) for key, cc in in_range.items()
                  if np.isclose(key[keep], fixed_value))
@@ -282,7 +282,7 @@ def plot_heatmap(grid, save_path=HEATMAP_SAVE_PATH, annotate=True, min_points=3)
         values[temps.index(t), spats.index(s)] = cc
     masked = np.ma.masked_invalid(values)
 
-    cmap = copy.copy(plt.cm.viridis)
+    cmap = copy.copy(plt.get_cmap("viridis"))
     cmap.set_bad(color="lightgray")
 
     fig, ax = plt.subplots(figsize=(12, 7))

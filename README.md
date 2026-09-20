@@ -107,12 +107,6 @@ with helpers that build the paths this project actually uses:
 
 | Call | Returns |
 |---|---|
-| `i24_data("11_30")` | `<data>/i24/i24_11_30` |
-| `i24_data("11_30", "q_hat.npy")` | the flow file for that date |
-| `i24_calibration("11_30")` | that date's static calibration directory |
-| `i24_calibration("11_30", "calibration_dynamic", 90)` | `.../calibration_dynamic/control_h_90` |
-| `i24_results("11_30")` | `<results>/i24/i24_11_30/calibration_static/fixed_ramping` |
-| `i24_results("11_30", "speed_lb")` | the min-speed-limit sweep directory |
 | `synthetic_results("demand")` | `<results>/synthetic_10km/demand` |
 | `fig("i24_tsd.png")` | a path under `figs/`, creating the directory if needed |
 | `ensure_dir(p)` | `p`, created if missing — safe to wrap any output path |

@@ -20,8 +20,8 @@ _SRC_DIR = os.path.join(_THIS_DIR, "..", "src")
 if _SRC_DIR not in sys.path:
     sys.path.append(_SRC_DIR)
 
-from paths import DEFAULT_CALIBRATION, FIGS_ROOT, i24_data, i24_results
-from traffic_sim import run_metanet_sim
+from paths import DEFAULT_CALIBRATION, FIGS_ROOT, I24_DATA, I24_RESULTS
+from traffic_sim import run_metanet_sim_plottable
 from param_loader import METANET_Params
 from generate_demand_synthetic import get_ff_tts
 
@@ -67,11 +67,9 @@ def load_data(
     """
     start_time_step = int(start_time / time_step)
 
-    data_path = i24_data(date) if data_path is None else data_path
-    results_path = i24_results(
-        date, "safety_sweep",
-        calibration_id=calibration_id, interval=calibration_interval,
-    )
+    data_path = I24_DATA / f"i24_{date}" if data_path is None else data_path
+    results_path = I24_RESULTS / f"i24_{date}" / calibration_id / \
+        (f"control_h_{calibration_interval}" if calibration_interval else "") / "safety_sweep"
     cal_path = (
         f"{data_path}/{calibration_id}"
         if calibration_interval is None
@@ -135,11 +133,11 @@ def load_data(
     )
 
     vsl_baseline = np.ones((downstream_density.shape[0], num_segments)) * 150
-    _, v_baseline, _, tts_baseline = run_metanet_sim(
+    _, v_baseline, _, tts_baseline = run_metanet_sim_plottable(
         time_step, L, init_state,
         data_inflow[start_time:], downstream_density[start_time:],
         model_params, lanes=lane_dict, vsl_speeds=vsl_baseline,
-        plotting=True, real_data=False,
+        real_data=False,
     )
 
     control_zone = [i for i in range(2, num_segments)]

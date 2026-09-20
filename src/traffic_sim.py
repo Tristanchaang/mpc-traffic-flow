@@ -31,7 +31,7 @@ def calculate_V(rho: float, v_ctrl: float, a: float, p_crit: float, v_free: floa
     return min(v_free * np.exp(- (rho / p_crit) ** a / a), v_ctrl)
 
 
-def calculate_V_arr(rho_arr: np.ndarray, v_ctrl_arr: np.ndarray, a: float, p_crit: float, v_free: float) -> np.ndarray:
+def calculate_V_arr(rho_arr: np.ndarray, v_ctrl_arr: np.ndarray, a: np.ndarray, p_crit: np.ndarray, v_free: np.ndarray) -> np.ndarray:
     """Vectorized desired speed function. Not used in sim, but useful for plotting."""
     return np.minimum(v_free * np.exp(- (rho_arr / p_crit) ** a / a), v_ctrl_arr)
 
@@ -193,17 +193,10 @@ def metanet_step(t: int,
 
     return density_tp1, velocity_tp1, queue_tp1, flow_origin_tp1, flow_tp1
 
-
-from typing import TypedDict
-from typing_extensions import NotRequired
-
-class SimResult(TypedDict):
-    density: np.ndarray
-    velocity: np.ndarray
-    queue: np.ndarray
-    total_travel_time: float
-    flow_origin: NotRequired[np.ndarray]
-    V_fd: NotRequired[np.ndarray]
+def run_metanet_sim_plottable(*args, **kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+    x = run_metanet_sim(*args, **kwargs, plotting=True)
+    assert(len(x) == 4)
+    return x
 
 def run_metanet_sim(T: float,
                     l: float,
@@ -236,7 +229,7 @@ def run_metanet_sim(T: float,
     init_flow_or_real = origin_flow_dynamics_MN(
         demand[0], initial_density[0], initial_queue, lanes[0], T,
         p_max=180.0, p_crit=_get_time_space_param(params["p_crit"], 0, 0), q_capacity=_get_time_space_param(params["q_capacity"], 0, 0)
-        )
+    )
 
     # Allocate histories
     density = np.zeros((time_steps + 1, num_segments), dtype=float)
@@ -295,9 +288,9 @@ def run_metanet_sim(T: float,
         V_fd = calculate_V_arr(
             density[0:-1],
             vsl_speeds,
-            params["a"].item(),
-            params["p_crit"].item(),
-            params["v_free"].item(),
+            params["a"],
+            params["p_crit"],
+            params["v_free"],
         )
         return density, velocity, queue, flow_origin, V_fd, total_travel_time
     else:
