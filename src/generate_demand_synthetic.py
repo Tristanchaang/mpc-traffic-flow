@@ -86,6 +86,7 @@ def get_num_veh(demand_profile, time_step):
     - Average travel time in seconds.
     """
     return sum(demand_profile) * time_step
+
 def get_ff_tts(demand_profile, time_step, length, v_free):
     """
     Calculate total time spent (TTS) under free flow conditions.
@@ -176,25 +177,25 @@ def optimize_scenarios(num_options, filepath, sim_time, time_step, num_segments,
                         v_fd_penalty=10000,
                         control_zone=np.arange(10, num_segments) 
                 )   
-                _, velocities, _, vsl_travel_time = run_metanet_sim(time_step, seg_length, start_state, demand_profile[0:time_steps], downstream_density[0:time_steps], 
-                                                                    sim_params, lanes=lanes, vsl_speeds=optimal_vsl, real_data=False, plotting=True)
+                _, velocities, _, vsl_travel_time = run_metanet_sim_plottable(time_step, seg_length, start_state, demand_profile[0:time_steps], downstream_density[0:time_steps], 
+                                                                    sim_params, lanes=lanes, vsl_speeds=optimal_vsl, real_data=False)
                 opt_tts_arr[i_dur, i_peak] = vsl_travel_time
                 np.savetxt(policy_dir, optimal_vsl, delimiter=',')
             else:
                 optimal_vsl = np.loadtxt(policy_dir, delimiter=',')
                 print(sim_time)
-                _, velocities, _, vsl_travel_time = run_metanet_sim(time_step, seg_length, start_state, demand_profile[0:time_steps], downstream_density[0:time_steps], 
-                                                                    sim_params, lanes=lanes, vsl_speeds=optimal_vsl, real_data=False, plotting=True)
+                _, velocities, _, vsl_travel_time = run_metanet_sim_plottable(time_step, seg_length, start_state, demand_profile[0:time_steps], downstream_density[0:time_steps], 
+                                                                    sim_params, lanes=lanes, vsl_speeds=optimal_vsl, real_data=False)
                 opt_tts_arr[i_dur, i_peak] = vsl_travel_time
 
             print(optimal_vsl.shape)
             print(f"Peak demand / duration: {peak_demand} / {peak_duration}, Travel time: {tts[(peak_demand, peak_duration)]}, Optimal travel time: {vsl_travel_time}")
 
-            ff_tt_arr[i_dur, i_peak] = get_ff_tt(demand_profile, time_step, seg_length * num_segments, sim_params['v_free'][0])
+            ff_tt_arr[i_dur, i_peak] = get_ff_tts(demand_profile, time_step, seg_length * num_segments, sim_params['v_free'][0])
             avg_tt_arr[i_dur, i_peak] = tts[(peak_demand, peak_duration)] / get_num_veh(demand_profile, time_step) * 60
             # print(np.shape(velocities[int(35/(60 * time_step)), 10:]))
-            _, nc_velocities, _, _ = run_metanet_sim(time_step, seg_length, start_state, demand_profile[0:time_steps], 
-                              np.zeros(time_steps), sim_params, lanes=lanes, real_data=False, vsl_speeds=None, plotting=True)
+            _, nc_velocities, _, _ = run_metanet_sim_plottable(time_step, seg_length, start_state, demand_profile[0:time_steps], 
+                              np.zeros(time_steps), sim_params, lanes=lanes, real_data=False, vsl_speeds=None)
             avg_speed_arr[i_dur, i_peak] = np.mean(nc_velocities[100:, 10:]) * 0.62
 
     return tts_arr, opt_tts_arr, ff_tt_arr, avg_tt_arr, avg_speed_arr
@@ -286,7 +287,7 @@ if __name__ == "__main__":
     # move legend outside the plot
     # plt.legend( loc='upper left')
     # plt.legend(loc='upper left', fontsize=14)
-    plt.savefig(fig("delay_reduction.png"), dpi=300, bbox_inches='tight', pad_inches=0.1)
+    plt.savefig("delay_reduction.png", dpi=300, bbox_inches='tight', pad_inches=0.1)
     plt.show()
     
 

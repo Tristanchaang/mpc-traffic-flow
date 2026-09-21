@@ -4,7 +4,8 @@ from matplotlib.axes import Axes
 preset_figsizes = {
   (1, 1): (10, 5),
   (1, 2): (15, 5),
-  (1, 3): (17, 5)
+  (1, 3): (17, 5),
+  (1, 4): (20, 5),
 }
 
 class Plotter:

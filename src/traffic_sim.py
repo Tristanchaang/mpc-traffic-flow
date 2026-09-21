@@ -193,17 +193,32 @@ def metanet_step(t: int,
 
     return density_tp1, velocity_tp1, queue_tp1, flow_origin_tp1, flow_tp1
 
-def run_metanet_sim_plottable(*args, **kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+def run_metanet_sim_plottable(*args, **kwargs) -> Tuple[
+        np.ndarray[tuple[int, int], np.dtype[np.float64]], 
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        float
+    ]:
     x = run_metanet_sim(*args, **kwargs, plotting=True)
     assert(len(x) == 4)
     return x
 
-def run_metanet_sim_end(*args, **kwargs) -> Tuple[Tuple[float, float, float, float], float]:
+def run_metanet_sim_end(*args, **kwargs) -> Tuple[
+        Tuple[float, float, float, float], 
+        float
+    ]:
     x = run_metanet_sim(*args, **kwargs, plotting=False, opt=False)
     assert(len(x) == 2 and len(x[0]) == 4)
     return x
 
-def run_metanet_sim_opt(*args, **kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+def run_metanet_sim_opt(*args, **kwargs) -> Tuple[
+        np.ndarray[tuple[int, int], np.dtype[np.float64]], 
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        np.ndarray[tuple[int, int], np.dtype[np.float64]],
+        float
+    ]:
     x = run_metanet_sim(*args, **kwargs, plotting=False, opt=True)
     assert(len(x) == 6)
     return x
