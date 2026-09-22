@@ -9,6 +9,8 @@ from param_loader import METANET_Params
 import matplotlib.colors as mcolors
 import sys
 
+from viz import Plotter
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import synthetic_results, fig
 
@@ -249,13 +251,13 @@ if __name__ == "__main__":
     scenarios = np.arange(1, percent_improvement.shape[0]+1) # labels 1–20
     width = 0.85  # bar width
 
-    fig_, ax = plt.subplots(figsize=(15, 6))
-    plt.grid()
-    ax.set_axisbelow(True)
+    p = Plotter(1, 1)
+    p[0].grid()
+    p[0].set_axisbelow(True)
 
     # Stacked bars
-    p1 = ax.bar(scenarios, avg_delay, label="Delay without control", color="#d33b19", width=width)
-    p2 = ax.bar(scenarios, percent_improvement * avg_delay/100,
+    p[0].bar(scenarios, avg_delay, label="Delay without control", color="#d33b19", width=width)
+    p[0].bar(scenarios, percent_improvement * avg_delay/100,
                 label="Delay reduced from control", color="#4e9858", width=width)
 
     # # Add percentage annotations
@@ -263,32 +265,18 @@ if __name__ == "__main__":
     # percentages = 100 * percent_improvement / total
 
     for i in range(len(scenarios)):
-        ax.text(scenarios[i], avg_delay[i] +0.001,   # slightly above bar
+        p[0].text(scenarios[i], avg_delay[i] +0.001,   # slightly above bar
                 f"{percent_improvement[i]:.0f}",
                 ha='center', va='bottom', fontsize=text_fontsize-4, fontname="Times New Roman", fontweight='bold')
 
     # Labels & layout
-    ax.set_xlabel("Peak demand of scenario (veh/hr)", fontsize=text_fontsize, fontname="Times New Roman")
-    ax.set_ylabel("Average delay per vehicle (hrs)", fontsize=text_fontsize, fontname="Times New Roman")
-    # ax.set_title("Stacked Delay and Controllable Congestion Across 20 Scenarios", fontsize=text_fontsize, fontname="Times New Roman")
-    ax.set_xticks(scenarios)
-    ax.set_xticklabels(peak_demand.astype(int), rotation=45, ha='center')
-    ax.legend(prop={'family': 'Times New Roman', 'size': text_fontsize})
+    p[0] = {'xlabel': "Peak demand of scenario (veh/hr)", 'ylabel': "Average delay per vehicle (hrs)", 
+            'xticks': scenarios, 'xticklabels': peak_demand.astype(int),
+            # 'title': "Stacked Delay and Controllable Congestion Across 20 Scenarios",
+            'ylim': (0, np.max(avg_delay)*1.1)}
 
-
-    ax.tick_params(labelsize=text_fontsize - 4)
-    # set tick label font
-    for label in ax.get_xticklabels():
-        label.set_fontname('Times New Roman')
-    for label in ax.get_yticklabels():
-        label.set_fontname('Times New Roman')
-    
-    ax.set_ylim(0, np.max(avg_delay)*1.1)
-    # move legend outside the plot
-    # plt.legend( loc='upper left')
-    # plt.legend(loc='upper left', fontsize=14)
-    plt.savefig(fig("delay_reduction.png"), dpi=300, bbox_inches='tight', pad_inches=0.1)
-    plt.show()
+    p.savefig(fig("delay_reduction.png"), dpi=300, bbox_inches='tight', pad_inches=0.1)
+    p.show()
     
 
     # plt.show()

@@ -281,14 +281,8 @@ def run_metanet_sim(T: hr, l: km,
     if plotting:
         return density, velocity, queue, total_travel_time
     elif opt:
-        V_fd = calculate_V_arr(
-            density[0:-1],
-            vsl_speeds,
-            params["a"],
-            params["p_crit"],
-            params["v_free"],
-        )
+        V_fd = calculate_V_arr(density[0:-1], vsl_speeds, params["a"], params["p_crit"], params["v_free"])
         return density, velocity, queue, flow_origin, V_fd, total_travel_time
     else:
-        final_tuple = MetanetState(density[-1], velocity[-1], float(flow_origin[-1, 0]), float(queue[-1, 0]))
-        return final_tuple, total_travel_time
+        final_state = MetanetState(density[-1], velocity[-1], float(flow_origin[-1, 0]), float(queue[-1, 0]))
+        return final_state, total_travel_time

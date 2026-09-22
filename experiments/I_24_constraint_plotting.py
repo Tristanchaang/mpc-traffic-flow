@@ -29,6 +29,8 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from viz import Plotter
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
@@ -231,22 +233,21 @@ def plot(hold, speed, temporal, spatial, save_path=SAVE_PATH):
     mpl.rcParams["font.family"] = "serif"
     mpl.rcParams["font.serif"] = ["Times New Roman"]
 
-    fig, axes = plt.subplots(2, 2, figsize=(13, 9))
+    p = Plotter(2, 2, figsize=(13, 9))
 
-    _panel(axes[0][0], hold[0] * 10 / 60, hold[1],
+    _panel(p[0, 0], hold[0] * 10 / 60, hold[1],
            "Hold length (min)", "(a) Update interval")
-    _panel(axes[0][1], speed[0], speed[1],
+    _panel(p[0, 1], speed[0], speed[1],
            "Minimum speed limit (km/hr)", "(b) Minimum posted speed limit")
-    _panel(axes[1][0], temporal[0], temporal[1],
+    _panel(p[1, 0], temporal[0], temporal[1],
            r"Temporal bound $\mathcal{S}_{\mathrm{temp}}$ (km/hr per step)",
            rf"(c) Temporal smoothness ($\mathcal{{S}}_{{\mathrm{{spat}}}}$ = {temporal[2]:g} km/hr)")
-    _panel(axes[1][1], spatial[0], spatial[1],
+    _panel(p[1, 1], spatial[0], spatial[1],
            r"Spatial bound $\mathcal{S}_{\mathrm{spat}}$ (km/hr)",
            rf"(d) Spatial smoothness ($\mathcal{{S}}_{{\mathrm{{temp}}}}$ = {spatial[2]:g} km/hr)")
 
-    fig.tight_layout()
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
+    p.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
     print(f"\nFigure saved to: {save_path}")
     mpl.rcParams["font.family"] = original_font
     return fig
@@ -285,20 +286,18 @@ def plot_heatmap(grid, save_path=HEATMAP_SAVE_PATH, annotate=True, min_points=3)
     cmap = copy.copy(plt.get_cmap("viridis"))
     cmap.set_bad(color="lightgray")
 
-    fig, ax = plt.subplots(figsize=(12, 7))
-    im = ax.imshow(masked, cmap=cmap, aspect="auto", origin="lower",
-                   vmin=0, vmax=float(masked.max()))
+    p = Plotter(1, 1)
 
-    ax.set_xticks(range(len(spats)))
-    ax.set_xticklabels([f"{s:g}" for s in spats])
-    ax.set_yticks(range(len(temps)))
-    ax.set_yticklabels([f"{t:g}" for t in temps])
-    ax.set_xlabel(r"Spatial bound $\mathcal{S}_{\mathrm{spat}}$ (km/hr)",
-                  fontsize=TEXT_FONTSIZE - 2, fontname="Times New Roman")
-    ax.set_ylabel(r"Temporal bound $\mathcal{S}_{\mathrm{temp}}$ (km/hr per step)",
-                  fontsize=TEXT_FONTSIZE - 2, fontname="Times New Roman")
-    ax.tick_params(labelsize=TEXT_FONTSIZE - 2 )
-    for lab in ax.get_xticklabels() + ax.get_yticklabels():
+    im = p[0].imshow(masked, cmap=cmap, aspect="auto", origin="lower",
+                   vmin=0, vmax=float(masked.max()))
+    p[0] = {'xticks': range(len(spats)), 'yticks': range(len(temps)),
+            'xticklabels': [f"{s:g}" for s in spats],
+            'yticklabels': [f"{t:g}" for t in temps],
+            'xlabel': r"Spatial bound $\mathcal{S}_{\mathrm{spat}}$ (km/hr)",
+            'ylabel': r"Temporal bound $\mathcal{S}_{\mathrm{temp}}$ (km/hr per step)"}
+
+    p[0].tick_params(labelsize=TEXT_FONTSIZE - 2 )
+    for lab in p[0].get_xticklabels() + p[0].get_yticklabels():
         lab.set_fontname("Times New Roman")
 
     if annotate:
@@ -307,23 +306,20 @@ def plot_heatmap(grid, save_path=HEATMAP_SAVE_PATH, annotate=True, min_points=3)
             for j in range(len(spats)):
                 if masked.mask[i, j]:
                     continue
-                ax.text(j, i, f"{values[i, j]:.0f}", ha="center", va="center",
+                p[0].text(j, i, f"{values[i, j]:.0f}", ha="center", va="center",
                         fontsize=TEXT_FONTSIZE - 4, fontname="Times New Roman",
                         color="white" if values[i, j] < threshold else "black")
 
-    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
-    cbar.set_label("Controllable congestion (%)", fontsize=TEXT_FONTSIZE - 2,
-                   fontname="Times New Roman")
+    cbar = p.fig.colorbar(im, ax=p[0], fraction=0.046, pad=0.02, label="Controllable congestion (%)")
     cbar.ax.tick_params(labelsize=TEXT_FONTSIZE - 2)
     for lab in cbar.ax.get_yticklabels():
         lab.set_fontname("Times New Roman")
 
-    fig.tight_layout()
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
+    p.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
     print(f"Heatmap saved to: {save_path}")
     mpl.rcParams["font.family"] = original_font
-    return fig
+    return p.fig
 
 
 if __name__ == "__main__":

@@ -37,6 +37,7 @@ class Plotter:
     for ax in self: 
       if ax.get_legend_handles_labels()[1]: ax.legend()
     plt.tight_layout()
+    plt.rcParams.update({'font.family': 'Times New Roman'})
     plt.show()
 
   def savefig(self, *args, **kwargs):
