@@ -249,7 +249,7 @@ if __name__ == "__main__":
     scenarios = np.arange(1, percent_improvement.shape[0]+1) # labels 1–20
     width = 0.85  # bar width
 
-    fig, ax = plt.subplots(figsize=(15, 6))
+    fig_, ax = plt.subplots(figsize=(15, 6))
     plt.grid()
     ax.set_axisbelow(True)
 
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     # move legend outside the plot
     # plt.legend( loc='upper left')
     # plt.legend(loc='upper left', fontsize=14)
-    plt.savefig("delay_reduction.png", dpi=300, bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(fig("delay_reduction.png"), dpi=300, bbox_inches='tight', pad_inches=0.1)
     plt.show()
     
 

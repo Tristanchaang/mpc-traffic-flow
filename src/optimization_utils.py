@@ -17,6 +17,7 @@ from pyomo.environ import (
 from param_loader import METANET_Params
 import pyomo.environ as pyo
 from dataclasses import dataclass, asdict, field
+from sim_types import *
 
 from traffic_sim import run_metanet_sim
 from viz import Plotter
@@ -64,33 +65,9 @@ class RobustOptConfig:
     lam_worst: float = 0.2   
 
 
-# def smooth_inflow(inflow, window_size=2):
-#     kernel = np.ones(window_size) / window_size
-#     smoothed = np.apply_along_axis(
-#         lambda m: np.convolve(m, kernel, mode="same"), axis=0, arr=inflow
-#     )
-#     return smoothed
-
-def smooth_inflow(inflow, window_size=2):
-    # Create averaging kernel
-    kernel = np.ones(window_size) / window_size
-    
-    # Compute asymmetric padding for even window sizes
-    pad_left = window_size // 2
-    pad_right = window_size - pad_left - 1
-
-    # Pad using boundary values (edge padding)
-    if inflow.ndim == 1:
-        padded = np.pad(inflow, (pad_left, pad_right), mode='edge')
-    else:
-        padded = np.pad(inflow, ((pad_left, pad_right), (0, 0)), mode='edge')
-
-    # Convolve along time dimension
-    smoothed = np.apply_along_axis(
-        lambda m: np.convolve(m, kernel, mode="valid"), axis=0, arr=padded
-    )
-    return smoothed
-
+from scipy.ndimage import uniform_filter1d
+def smooth_inflow(inflow, window_size=2) -> time_space:
+    return uniform_filter1d(inflow,size=window_size, axis=0, mode="nearest", output=np.float64)
 
 def fit_fd1(
     flattened_rho_hat,

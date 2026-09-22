@@ -20,11 +20,13 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from viz import Plotter
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
 from paths import fig, I24_RESULTS, DEFAULT_CALIBRATION           # noqa: E402
-from cc_analysis import (                    # noqa: E402
+from archive.cc_analysis import (                    # noqa: E402
     L, time_step,
     load_day_data, get_ff_tts, format_date_label,
 )
@@ -93,18 +95,15 @@ def plot(results, save_path=SAVE_PATH):
 
     corridor_km = results[0]["num_segments"] * L
     duration_min = results[0]["observed"].shape[0] * time_step * 60
-    extent = [0, duration_min, 0, corridor_km]
+    extent = (0, duration_min, 0, corridor_km)
     vmax = float(np.ceil(max(r["observed"].max() for r in results) / 10) * 10)
 
-    fig, axes = plt.subplots(n_rows, n_cols,
-                             figsize=(4.6 * n_cols, 3.6 * n_rows),
-                             sharex=True, sharey=True, squeeze=False)
+    p = Plotter(n_rows, n_cols, figsize=(4.6 * n_cols, 3.6 * n_rows))
 
     panel_labels = "abcdefghi"
-    im = None
     for row, res in enumerate(results):
         for col, (key, title) in enumerate(panels):
-            ax = axes[row][col]
+            ax = p[row, col]
             im = ax.imshow(res[key].T, aspect="auto", origin="lower",
                            cmap="RdYlGn", interpolation="none",
                            vmin=0, vmax=vmax, extent=extent)
@@ -133,9 +132,9 @@ def plot(results, save_path=SAVE_PATH):
             for lab in ax.get_xticklabels() + ax.get_yticklabels():
                 lab.set_fontname("Times New Roman")
 
-    fig.subplots_adjust(right=0.89, hspace=0.32, wspace=0.08)
-    cbar_ax = fig.add_axes([0.91, 0.12, 0.015, 0.76])
-    cbar = fig.colorbar(im, cax=cbar_ax)
+    p.fig.subplots_adjust(right=0.89, hspace=0.32, wspace=0.08)
+    cbar_ax = p.fig.add_axes((0.91, 0.12, 0.015, 0.76))
+    cbar = p.fig.colorbar(im, cax=cbar_ax)
     cbar.set_label("Velocity (km/hr)", fontsize=TEXT_FONTSIZE - 3,
                    fontname="Times New Roman")
     cbar.ax.tick_params(labelsize=TEXT_FONTSIZE - 7)
@@ -143,10 +142,10 @@ def plot(results, save_path=SAVE_PATH):
         lab.set_fontname("Times New Roman")
 
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
+    p.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
     print(f"\nFigure saved to: {save_path}")
     mpl.rcParams["font.family"] = original_font
-    return fig
+    return p.fig
 
 
 if __name__ == "__main__":

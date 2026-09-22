@@ -33,7 +33,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
 from paths import fig, I24_RESULTS, DEFAULT_CALIBRATION           # noqa: E402
-from cc_analysis import (                    # noqa: E402
+from archive.cc_analysis import (                    # noqa: E402
     L, time_step,
     load_day_data, get_ff_tts,
 )

@@ -1,5 +1,5 @@
 from traffic_sim import *
-from viz import *
+from viz import Plotter
 
 def plot_vsls(vsl_matrix: np.ndarray, time_steps: int, num_segm: int, v_free: float, T=10/3600, l=0.5):
     '''
@@ -82,72 +82,61 @@ def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane
     lane_array = np.tile(lane_list, (time_steps+1, 1))
     
     #plot velocity, density, amd flow in order of plot_var
-    fig, all_axs = plt.subplots(h, w, figsize=(30, 3.5*h), width_ratios=widths)
-    axs = all_axs.flatten()
+    p = Plotter(h, w, figsize=(30, 3.5*h))
     i = 0
     #set title for first and second column
 
     if plot_v:
-        axs[i].imshow(v_nocontrol.T, cmap='RdYlGn', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=v_free, interpolation='None')
-        axs[i].set_title('Delay: {:.1f} veh-hr'.format(delay_nocontrol), fontsize=23, fontname='Times New Roman')
-        #no x axis labels for first row
-        axs[i].set_xticks([])
-        im_v = axs[i+1].imshow(v_optimal.T, cmap='RdYlGn', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=v_free, interpolation='None')
-        axs[i+1].set_title(f'Delay: {delay_optimal:.1f} veh-hr', fontsize=23, fontname='Times New Roman')
-        cbar = fig.colorbar(im_v, label='Velocity (km/hr)', ax=axs[i+1])
-        axs[i+1].set_xticks(np.arange(0, time_steps, 120), (np.arange(0, time_steps * T * 60, 120 * T * 60)).astype(int))
-        axs[i+1].set_xlabel('Time (min)', fontsize=22, fontname='Times New Roman')
-        #increase font size of colorbar
-        cbar.set_label('Velocity (km/hr)', fontsize=22, fontname='Times New Roman')
-        for tick in cbar.ax.get_yticklabels():
-            # tick.set_family("Times New Roman")
-            tick.set_fontsize(20)
-        # cbar.ax.set_aspect(30)
-
-        im_cc = axs[i+2].imshow(v_optimal.T - v_nocontrol.T, cmap='RdYlBu', extent=(0, time_steps+1, num_segm, 0), aspect='auto', vmin=-100, vmax=100, interpolation='None')
-        axs[i+2].set_title(f'{improvement_tts}% delay reduction\nVelocity Improvement', fontsize=18)
-        fig.colorbar(im_cc, label='Velocity Difference (km/hr)', ax=axs[i+2], extend='both')
+        p[i].imshow(v_nocontrol.T, cmap='RdYlGn', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=v_free, interpolation='None')
+        p[i] = {
+            'title': 'Delay: {:.1f} veh-hr'.format(delay_nocontrol),
+            'xticks': []
+        }
+        im_v = p[i+1].imshow(v_optimal.T, cmap='RdYlGn', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=v_free, interpolation='None')
+        p.fig.colorbar(im_v, label='Velocity (km/hr)', ax=p[i+1])
+        p[i+1] = {
+            'title': f'Delay: {delay_optimal:.1f} veh-hr',
+            'xticks': np.arange(0, time_steps, 120), 'xticklabels': (np.arange(0, time_steps * T * 60, 120 * T * 60)).astype(int),
+            'xlabel': 'Time (min)'
+        }
+        im_cc = p[i+2].imshow(v_optimal.T - v_nocontrol.T, cmap='RdYlBu', extent=(0, time_steps+1, num_segm, 0), aspect='auto', vmin=-100, vmax=100, interpolation='None')
+        p[i+2] = {'title': f'{improvement_tts}% delay reduction\nVelocity Improvement'}
+        p.fig.colorbar(im_cc, label='Velocity Difference (km/hr)', ax=p[i+2], extend='both')
         i += 3
     if plot_p:
-        axs[i].imshow(p_nocontrol.T, cmap='RdYlGn_r', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=180, interpolation='None')
-        axs[i].set_title('Density without control')
-        im_p = axs[i+1].imshow(p_optimal.T, cmap='RdYlGn_r', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=180)
-        axs[i+1].set_title('Density with control')
-        fig.colorbar(im_p, label='Density (veh/km)', ax=axs[i+1])
+        p[i].imshow(p_nocontrol.T, cmap='RdYlGn_r', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=180, interpolation='None')
+        p[i] = {'title': 'Density without control'}
+        im_p = p[i+1].imshow(p_optimal.T, cmap='RdYlGn_r', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=180)
+        p[i+1] = {'title': 'Density with control'}
+        p.fig.colorbar(im_p, label='Density (veh/km)', ax=p[i+1])
 
         if plot_v:
-            fig.delaxes(all_axs[1, 2])
+            p.fig.delaxes(p[1, 2])
         i += 3 if plot_v else 2
     if plot_q:
-        max_val = max(np.max(v_nocontrol*p_nocontrol* lane_array), np.max(v_optimal*p_optimal*lane_array))
-        axs[i].imshow(v_nocontrol.T * p_nocontrol.T * lane_array.T, cmap='viridis', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=max_val, interpolation='None')
-        axs[i].set_title('Flow without control')
-        im_q = axs[i+1].imshow(v_optimal.T * p_optimal.T * lane_array.T, cmap='viridis', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=max_val)
-        axs[i+1].set_title('Flow with control')
-        fig.colorbar(im_q, label='Flow (veh/hr)', ax=axs[i+1])
+        max_val = max((v_nocontrol*p_nocontrol* lane_array).max(), (v_optimal*p_optimal*lane_array).max())
+        p[i].imshow(v_nocontrol.T * p_nocontrol.T * lane_array.T, cmap='viridis', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=max_val, interpolation='None')
+        p[i] = {'title': 'Flow without control'}
+        im_q = p[i+1].imshow(v_optimal.T * p_optimal.T * lane_array.T, cmap='viridis', aspect='auto', extent=(0, time_steps+1, num_segm, 0), vmin=0, vmax=max_val)
+        p[i+1] = {'title': 'Flow with control'}
+        p.fig.colorbar(im_q, label='Flow (veh/hr)', ax=p[i+1])
 
-        if plot_v:
-            fig.delaxes(all_axs[i//3,2])
+        if plot_v: p.fig.delaxes(p[i//3,2])
     
     # reverse y axis for all subplots
     tick_freq = int(num_segm / 5)
-    for ax in axs:
+    for ax in p:
         ax.invert_yaxis()
         ax.set_yticks(np.arange(0, num_segm+1, tick_freq), np.round(np.arange(0, num_segm*l + 1, tick_freq*l), 2))
         ax.set_ylabel('Distance (km)', fontsize=22, fontname='Times New Roman')
         ax.tick_params(labelsize=20)
     
-    # make all labels times new roman
-    for ax in axs:
-        for label in ax.get_xticklabels() + ax.get_yticklabels():
-            label.set_fontname('Times New Roman')
-            label.set_fontsize(20)
     # Plot a horizontal line at 2.5 km (segment 5)
     # for ax in axs:
     #     ax.axhline(10, color='black', linestyle='--')
-    plt.savefig('vsl_control.png', dpi=300, bbox_inches='tight')
-    fig.subplots_adjust(hspace=0.4)
-    plt.show()
+    p.savefig('vsl_control.png', dpi=300, bbox_inches='tight')
+    p.fig.subplots_adjust(hspace=0.4)
+    p.show()
 
     
 
