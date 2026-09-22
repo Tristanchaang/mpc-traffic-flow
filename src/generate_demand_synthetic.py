@@ -65,7 +65,7 @@ def generate_demand_options(num_options, sim_time, time_step, num_segments, seg_
         start_state = (np.full(num_segments, demand_profile[0]/(sim_lanes[0] * 90)), np.full(num_segments, 90), demand_profile[0], 0)
 
         num_time_steps = int(sim_time / time_step)
-        travel_time = run_metanet_sim(time_step, seg_length, start_state, demand_profile, np.zeros(num_time_steps), 
+        travel_time = run_metanet_sim_end(time_step, seg_length, start_state, demand_profile, np.zeros(num_time_steps), 
                                       sim_params, lanes=lanes, real_data=False, vsl_speeds=None)[1]
  
 

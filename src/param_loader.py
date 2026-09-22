@@ -1,10 +1,11 @@
 import numpy as np
 import os
+from sim_types import MetanetParams
 
 class METANET_Params:
     def __init__(self, path=None, control_h=None, num_timesteps=360, num_segments=14):
         if path is not None and control_h is not None:
-            self.params: dict[str, np.ndarray] = {
+            self.params: MetanetParams = {
                 "tau": np.array(0),
                 "K": np.array(0),
                 "eta_high": np.array(0),
@@ -61,7 +62,10 @@ class METANET_Params:
                 "p_crit": np.load(f'{path}/rho_crit.npy'),
                 "v_free": np.load(f'{path}/v_free.npy'),
                 "a": np.load(f'{path}/a.npy'),
-                'q_capacity': np.array([2400 for i in range(num_segments)])
+                'q_capacity': np.array([2400 for i in range(num_segments)]),
+                "r": np.array([]),
+                "beta": np.array([]),
+                "gamma": np.array([])
             }
             try:
                 self.params['r'] = np.load(f'{path}/r_inflow_array.npy')
@@ -90,7 +94,7 @@ class METANET_Params:
                 'gamma' : np.array([1 for i in range(num_segments)])
             }
 
-    def get_params(self):
+    def get_params(self) -> MetanetParams:
         return self.params
 
     def get_param(self, key):

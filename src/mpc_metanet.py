@@ -2,11 +2,24 @@ import time
 import json
 
 import pyomo.environ as pyo
+from pyomo.core.base.var import IndexedVar
+from typing import cast
+from sim_types import *
 
 import numpy as np
-from traffic_sim import run_metanet_sim, _get_time_space_param, run_metanet_sim_end, run_metanet_sim_plottable, run_metanet_sim_opt
+from traffic_sim import _get_time_space_param, run_metanet_sim_end, run_metanet_sim_plottable, run_metanet_sim_opt
 from pyomo.util.infeasible import log_infeasible_constraints
 import logging
+
+class MPCModel(pyo.ConcreteModel):
+    vsl: IndexedVar
+    density: IndexedVar
+    velocity: IndexedVar
+    queue: IndexedVar
+    queue_out: IndexedVar
+    time: pyo.Set
+    objective: pyo.Objective
+    dynamics: pyo.Constraint
 
 
 def append_number_csv(path, number):
@@ -48,14 +61,14 @@ def mpc_opt_shooting(T, l, num_segments, traffic_demand, downstream_density,
 
 
 def mpc_opt(
-    T, l, num_segments,
-    traffic_demand, downstream_density,
+    T: hr, l: km, num_segments: int,
+    traffic_demand: time_vec, downstream_density: time_vec,
     horizon_p, horizon_c,
-    starting_traffic_vars, lanes, hold_len,
+    starting_traffic_vars, lanes: lane_map, hold_len,
     initialize=None, init_fixed=None,
     control_one_segment=None, control_changepoints=None,
     safety_temporal=None, safety_spatial=None,
-    prior_vsl=None, params=None,
+    prior_vsl=None, params: MetanetParams|None=None,
     speed_lb=40, v_fd_penalty=0.1, control_zone=None, tee=False
 ):
     # initial_density, initial_velocity, initial_flow_or, initial_queue = starting_traffic_vars
@@ -66,15 +79,15 @@ def mpc_opt(
     # Parameters
     # ------------------------------------------------------------------
     if params is None:
-        v_free   = [120.0] * num_segments
-        a        = [1.4]   * num_segments
-        p_crit   = [37.45] * num_segments
-        q_cap    = [2200.0]* num_segments
-        K        = [40.0]  * num_segments
-        tau      = [18/3600] * num_segments
-        eta_high = [30.0]  * num_segments
-        r        = [0.0]   * num_segments
-        beta     = [0.0]   * num_segments
+        v_free   = np.array([120.0] * num_segments)
+        a        = np.array([1.4]   * num_segments)
+        p_crit   = np.array([37.45] * num_segments)
+        q_cap    = np.array([2200.0]* num_segments)
+        K        = np.array([40.0]  * num_segments)
+        tau      = np.array([18/3600] * num_segments)
+        eta_high = np.array([30.0]  * num_segments)
+        r        = np.array([0.0]   * num_segments)
+        beta     = np.array([0.0]   * num_segments)
     else:
         v_free   = params['v_free']
         a        = params['a']
@@ -114,7 +127,7 @@ def mpc_opt(
     # ------------------------------------------------------------------
     # Model
     # ------------------------------------------------------------------
-    model = pyo.ConcreteModel() 
+    model = MPCModel() 
     assert isinstance(model, pyo.ConcreteModel)
 
     def vsl_bounds(model, h, m):
@@ -122,25 +135,25 @@ def mpc_opt(
             return (1e-4, 150)   # let it track v_free freely
         return (speed_lb, 150)
 
-    model.vsl = pyo.Var(range(horizon_p), seg_range,
-                        bounds=vsl_bounds, within=pyo.NonNegativeReals)
-    model.density  = pyo.Var(time_horizon, seg_range,
-                             bounds=(1e-4, 400), within=pyo.NonNegativeReals)
+    model.vsl = cast(IndexedVar, pyo.Var(range(horizon_p), seg_range,
+                        bounds=vsl_bounds, within=pyo.NonNegativeReals))
+    model.density  = cast(IndexedVar, pyo.Var(time_horizon, seg_range,
+                             bounds=(1e-4, 400), within=pyo.NonNegativeReals))
     # Lower bound is deliberately below traffic_sim.py's velocity_dynamics_MN
     # clamp (max(1e-4, ...)). A gridlocked segment arrives here with velocity
     # exactly 1e-4, and if that equalled the bound the initial-condition
     # equality velocity[0, m] == 1e-4 would pin the variable onto its own
     # bound — a degenerate point that sends IPOPT into its restoration phase
     # and makes it report "locally infeasible" for every warm start.
-    model.velocity = pyo.Var(time_horizon, seg_range,
-                             bounds=(1e-6, float(np.max(v_free)) + 30), within=pyo.NonNegativeReals)
-    model.queue     = pyo.Var(time_horizon, bounds=(0, 10000))
+    model.velocity = cast(IndexedVar, pyo.Var(time_horizon, seg_range,
+                             bounds=(1e-6, float(np.max(v_free)) + 30), within=pyo.NonNegativeReals))
+    model.queue     = cast(IndexedVar, pyo.Var(time_horizon, bounds=(0, 10000)))
     if len(q_cap.shape) == 2:
-        model.queue_out = pyo.Var(time_horizon, bounds=(0, q_cap[0][0] * lanes[0]),
-                                within=pyo.NonNegativeReals)
+        model.queue_out = cast(IndexedVar, pyo.Var(time_horizon, bounds=(0, q_cap[0][0] * lanes[0]),
+                                within=pyo.NonNegativeReals))
     else:
-        model.queue_out = pyo.Var(time_horizon, bounds=(0, q_cap[0] * lanes[0]),
-                        within=pyo.NonNegativeReals)
+        model.queue_out = cast(IndexedVar, pyo.Var(time_horizon, bounds=(0, q_cap[0] * lanes[0]),
+                        within=pyo.NonNegativeReals))
     model.v_fd  = pyo.Var(range(horizon_p), seg_range,
                           bounds=(0, float(np.max(v_free)) + 30), within=pyo.NonNegativeReals)
     # model.u_bin = pyo.Var(range(horizon_p), seg_range,
@@ -171,19 +184,19 @@ def mpc_opt(
         c_ws = flow_or_ws[:, 0] / (np.maximum(_get_time_space_param(q_cap, 0, 0), 1e-6) * lanes[0])
         c_ws = np.clip(c_ws, 0, 1)
         for t in range(horizon_p):
-            model.c[t].value = c_ws[t]
-        model.c[horizon_p].value = c_ws[-1] if len(c_ws) > 0 else 0.5
+            model.c[t] = c_ws[t]
+        model.c[horizon_p] = c_ws[-1] if len(c_ws) > 0 else 0.5
 
         for t in range(horizon_p):
-            model.queue[t].value     = queue_ws[t, 0]
-            model.queue_out[t].value = flow_or_ws[t, 0]
+            model.queue[t]     = queue_ws[t, 0]
+            model.queue_out[t] = flow_or_ws[t, 0]
             for m in seg_range:
                 if t > 0:
-                    model.density[t, m].value  = density_ws[t, m]
-                    model.velocity[t, m].value = velocity_ws[t, m]
+                    model.density[t, m]  = density_ws[t, m]
+                    model.velocity[t, m] = velocity_ws[t, m]
                 if t < horizon_p:
-                    model.vsl[t, m].value  = init_vsl[t, m]
-                    model.v_fd[t, m].value = v_fd_ws[t, m]
+                    model.vsl[t, m]  = init_vsl[t, m]
+                    model.v_fd[t, m] = v_fd_ws[t, m]
 
     # ------------------------------------------------------------------
     # Constraints
@@ -322,7 +335,7 @@ def mpc_opt(
                 # con.add(model.vsl[h-1, m] == 150)
 
             # METANET density/velocity update (unified across all segment positions)
-            inflow  = (model.density[h-1, m-1] * model.velocity[h-1, m-1] * lanes[m-1]
+            inflow = (model.density[h-1, m-1] * model.velocity[h-1, m-1] * lanes[m-1]
                     if m > 0 else model.queue_out[h-1])
             inflow += _get_time_space_param(r, h-1, m)
             outflow = model.density[h-1, m] * model.velocity[h-1, m] * lanes[m] / (1 - _get_time_space_param(beta, h-1, m))
@@ -493,7 +506,7 @@ def mpc_opt(
 
     return iters, solve_time, vsl_speeds_c, vsl_speeds_p
 
-def param_slice(params, start_time_step, end_time_step, total_time_steps, desired_length=None):
+def param_slice(params: MetanetParams, start_time_step, end_time_step, total_time_steps, desired_length=None):
     sliced_params = {}
     for key, value in params.items():
         if isinstance(value, np.ndarray) and value.shape[0] == total_time_steps:
@@ -508,17 +521,18 @@ def param_slice(params, start_time_step, end_time_step, total_time_steps, desire
     return sliced_params
 
 def mpc_find_vsl(
-    total_time_steps, traffic_demand, downstream_density, lanes,
-    T=5/3600, l=300/1000, num_segments=10,
-    pred_horizon=20, control_horizon=20, hold_length=1,
-    init_state=None,
+    total_time_steps: int, 
+    traffic_demand: time_vec, downstream_density: time_vec, lanes: lane_map,
+    T: hr = 5/3600, l: km = 300/1000, num_segments: int = 10,
+    pred_horizon = 20, control_horizon = 20, hold_length = 1,
+    init_state: MetanetState | None = None,
     control_one_segment=None, initialize_vsl=None, init_fixed=None,
     control_changepoints=None, safety_temporal=None, safety_spatial=None,
-    params=None, verbose=False,
+    params: MetanetParams | None = None, verbose=False,
     speed_lb=40, v_fd_penalty=0.1, control_zone=None, warmup_time=0, tee=False
-) -> np.ndarray:
+) -> time_space:
     t     = 0
-    state = init_state if init_state is not None else (
+    state: MetanetState = init_state if init_state is not None else MetanetState(
         np.array([traffic_demand[0] / (lanes[i] * 90) for i in range(num_segments)]),
         np.full(num_segments, 90.0),
         traffic_demand[0],
@@ -526,7 +540,7 @@ def mpc_find_vsl(
     )
 
     sim_time     = total_time_steps - pred_horizon + control_horizon
-    full_control = None
+    full_control: time_space | None = None
     solve_time   = 0.0
     iterations   = 0
 
@@ -558,7 +572,7 @@ def mpc_find_vsl(
             attempts.append((f"init_fixed={value}", dict(initialize=None, init_fixed=value)))
         attempts.append(("fully cold", dict(initialize=None, init_fixed=None)))
 
-        last_exc = None
+        last_exc = Exception
         for i, (label, overrides) in enumerate(attempts):
             try:
                 return mpc_opt(T, l, num_segments,
@@ -578,13 +592,14 @@ def mpc_find_vsl(
             if verbose and t % control_horizon == 0:
                 print(f"[MPC] t = {t}")
 
+            assert params is not None
             params_mpc = param_slice(params, t, t+pred_horizon, sim_time, desired_length=pred_horizon)
 
             # During warm-up, apply free-flow VSL and advance state without solving
             if t < warmup_time:
                 vsl_ctrl = np.full((control_horizon, num_segments), 150.0)
                 full_control = np.vstack((full_control, vsl_ctrl)) if full_control is not None else vsl_ctrl
-                state = run_metanet_sim(
+                state = run_metanet_sim_end(
                     T, l, state,
                     traffic_demand[t: t + control_horizon + 1],
                     downstream_density[t: t + control_horizon],
@@ -614,7 +629,7 @@ def mpc_find_vsl(
             prev_full_solution = vsl_full.copy()   # save for next iteration
             full_control = np.vstack((full_control, vsl_ctrl)) if full_control is not None else vsl_ctrl
 
-            state = run_metanet_sim(
+            state = run_metanet_sim_end(
                 T, l, state,
                 traffic_demand[t: t + control_horizon + 1],
                 downstream_density[t: t + control_horizon],
@@ -629,11 +644,13 @@ def mpc_find_vsl(
         if t < sim_time:
             print(t)
             print(sim_time-t)
+            assert params is not None
             params_mpc = param_slice(params, t, sim_time, sim_time, desired_length=pred_horizon+1)
             init_slice = initialize_vsl[t:] if initialize_vsl is not None else None
 
             n_iters, ytime, vsl_ctrl, vsl_full = _solve(t, sim_time - t, sim_time - t, state, init_slice, params_mpc)
-            full_control = np.vstack((full_control, vsl_ctrl))
+            assert full_control is not None
+            full_control = np.vstack([full_control, vsl_ctrl])
             solve_time  += ytime
             iterations  += n_iters
 
@@ -647,4 +664,5 @@ def mpc_find_vsl(
                     (1 if total_time_steps % control_horizon else 0))
         print(f"[MPC] Done. Total CPU: {solve_time:.1f}s  Avg/solve: {solve_time/n_solves:.2f}s")
 
+    assert full_control is not None
     return full_control

@@ -19,6 +19,7 @@ import pyomo.environ as pyo
 from dataclasses import dataclass, asdict, field
 
 from traffic_sim import run_metanet_sim
+from viz import Plotter
 
 CALIB_PARAM_NAMES = ["eta_high", "tau", "K", "rho_crit", "v_free", "a"]   # <<<
  
@@ -192,11 +193,11 @@ def fit_fd1(
 
     # Plot if requested
     if plot:
+        p = Plotter(1, 1)
         rho_range = np.linspace(0, max(flattened_rho_hat) * 1.1, 500)
         q_fit = Q_fd1(rho_range)
 
-        plt.figure(figsize=(8, 6))
-        plt.scatter(
+        p[0].scatter(
             flattened_rho_hat,
             flattened_q_hat,
             color="gray",
@@ -204,21 +205,17 @@ def fit_fd1(
             label="Data",
             s=1,
         )
-        plt.plot(rho_range, q_fit, linewidth=2.5, label="Fitted FD1", zorder=10)
-        plt.axvline(
+        p[0].plot(rho_range, q_fit, linewidth=2.5, label="Fitted FD1", zorder=10)
+        p[0].axvline(
             rho_crit_opt,
             color="red",
             linestyle="--",
             label=f"ρ_crit = {rho_crit_opt:.1f}",
         )
-        plt.axhline(C_opt, color="blue", linestyle=":", label=f"C = {C_opt:.1f}")
-        plt.xlabel("Density ρ (veh/km)")
-        plt.ylabel("Flow q (veh/h)")
-        plt.title("Fundamental Diagram Fit (FD1)")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+        p[0].axhline(C_opt, color="blue", linestyle=":", label=f"C = {C_opt:.1f}")
+        p[0] = {'title': 'Fundamental Diagram Fit (FD1)', 'xlabel': 'Density ρ (veh/km)', 'ylabel': 'Flow q (veh/h)'}
+        p[0].grid()
+        p.show()
 
     return {
         "rho_crit": rho_crit_opt,
@@ -301,12 +298,12 @@ def metanet_param_fit(
         model.a = Var(model.i, bounds=(0.5, 5))
 
         for i in range(num_segments):
-            model.eta_high[i].value = params["eta_high"][i]
-            model.tau[i].value = params["tau"][i]
-            model.K[i].value = params["K"][i]
-            model.rho_crit[i].value = params["p_crit"][i]
-            model.v_free[i].value = params["v_free"][i]
-            model.a[i].value = params["a"][i]
+            model.eta_high[i] = params["eta_high"][i]
+            model.tau[i] = params["tau"][i]
+            model.K[i] = params["K"][i]
+            model.rho_crit[i] = params["p_crit"][i]
+            model.v_free[i] = params["v_free"][i]
+            model.a[i] = params["a"][i]
 
     else:
         # model.eta_high = Var(model.i, bounds=(15.0, 60.0), initialize=30.0)
@@ -379,8 +376,8 @@ def metanet_param_fit(
             if warmstart is not None:
                 for i in range(num_segments):
                     for t in range(num_timesteps):
-                        model.beta[i].value = params["beta"][i]
-                        model.r_inflow[t, i].value = params["r"][t, i]
+                        model.beta[i] = params["beta"][i]
+                        model.r_inflow[t, i] = params["r"][t, i]
         else:
             model.beta = Var(model.i, bounds=(1e-3, 0.9), initialize=1e-3)
             model.r_inflow = Var(model.i, bounds=(1e-3, 2000), initialize=1e-3)
@@ -402,8 +399,8 @@ def metanet_param_fit(
             if warmstart is not None:
                 for i in range(num_segments):
                     for t in range(num_timesteps):
-                        model.beta[i].value = params["beta"][i]
-                        model.r_inflow[i].value = params["r"][i]
+                        model.beta[i] = params["beta"][i]
+                        model.r_inflow[i] = params["r"][i]
 
     else:
         model.beta = Var(model.i, bounds=(0.0, 0.0), initialize=0.0)
@@ -1104,10 +1101,10 @@ def run_calibration(
         "tau": [],
         "K": [],
         "eta_high": [],
-        "rho_crit": np.array([]),
-        "v_free": np.array([]),
-        "a": np.array([]),
-        "num_lanes": np.array([]),
+        "rho_crit": [],
+        "v_free": [],
+        "a": [],
+        "num_lanes": [],
     }
         # results["gamma"] = []
     results["beta"] = []

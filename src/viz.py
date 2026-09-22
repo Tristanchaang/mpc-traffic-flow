@@ -35,6 +35,12 @@ class Plotter:
 
   def show(self):
     for ax in self: 
-      if ax.get_legend() is not None: ax.legend()
+      if ax.get_legend_handles_labels()[1]: ax.legend()
     plt.tight_layout()
     plt.show()
+
+  def savefig(self, *args, **kwargs):
+    for ax in self: 
+      if ax.get_legend() is not None: ax.legend()
+    plt.tight_layout()
+    plt.savefig(*args, **kwargs)

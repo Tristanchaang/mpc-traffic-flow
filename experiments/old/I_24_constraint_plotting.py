@@ -15,7 +15,7 @@ from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.ticker import AutoMinorLocator
 
 sys.path.append('../src')  # ADAPT: match your notebook's sys.path setup
-from traffic_sim import run_metanet_sim
+from traffic_sim import run_metanet_sim, run_metanet_sim_plottable
 from param_loader import METANET_Params
 from generate_demand_synthetic import get_ff_tts
 
@@ -116,11 +116,11 @@ init_state = (true_density_initial, true_velocity_initial, data_inflow[start_tim
 # ---------------------------------------------------------------------------
 # Baseline (uncontrolled) run + free-flow travel time (metanet_params.ipynb cell 39)
 # ---------------------------------------------------------------------------
-_, _, _, tts_baseline = run_metanet_sim(
+_, _, _, tts_baseline = run_metanet_sim_plottable(
     time_step, L, init_state,
     data_inflow[start_time:], downstream_density[start_time:],
     model_params, lanes=lane_dict, vsl_speeds=None,
-    plotting=True, real_data=True,
+    real_data=True,
 )
 ff_ttt = get_ff_tts(data_inflow, time_step, L, model_params['v_free'])
 delay_baseline = tts_baseline - ff_ttt
@@ -139,12 +139,12 @@ for value in constraint_values:
 
     opt_vsl = np.load(vsl_path)
     print(opt_vsl.shape)
-    _, _, _, tts_opt = run_metanet_sim(
+    _, _, _, tts_opt = run_metanet_sim_plottable(
         time_step, L, init_state,
         data_inflow[start_time:start_time + opt_time],
         downstream_density[start_time:start_time + opt_time],
         model_params, vsl_speeds=opt_vsl, lanes=lane_dict,
-        plotting=True, real_data=False,
+        real_data=False,
     )
 
     opt_delay = tts_opt - ff_ttt

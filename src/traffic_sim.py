@@ -1,19 +1,17 @@
-
-import numpy as np
-from typing import Dict, Tuple, Optional
+from sim_types import *
 
 # ----------------------------
 # Core METANET helper functions
 # ----------------------------
 
-def density_dynamics(current: float, inflow: float, outflow: float, lanes: int, T: float, l: float,
+def density_dynamics(current: float, inflow: float, outflow: float, lanes: float, T: float, l: float,
                      gamma: float = 1.0, beta: float = 0.0, r: float = 0.0) -> float:
     """Update density with conservation equation (per segment).
     """
     return max(1e-4, current + T / (l * lanes) * (inflow - outflow / (1 - beta) + r))
 
 
-def flow_dynamics(density: float, velocity: float, lanes: int) -> float:
+def flow_dynamics(density: float, velocity: float, lanes: float) -> float:
     """Fundamental relation: q = rho * v * lanes."""
     return density * velocity * lanes
 
@@ -64,7 +62,7 @@ def velocity_dynamics_MN(current: float,
 def origin_flow_dynamics_MN(demand: float,
                             density_first: float,
                             queue: float,
-                            lanes: int,
+                            lanes: float, # allow fractional lanes
                             T: float,
                             p_max: float = 180.0,
                             p_crit: float = 37.45,
@@ -87,20 +85,19 @@ def _get_time_space_param(param, t: int, i: int):
 
 
 def metanet_step(t: int,
-                 density_t: np.ndarray,
-                 velocity_t: np.ndarray,
+                 density_t: space_vec,
+                 velocity_t: space_vec,
                  queue_t: float,
                  flow_origin_t: float,
                  *,
-                 T: float,
-                 l: float,
-                 vsl_speeds: np.ndarray,
-                 demand: np.ndarray,
-                 downstream_density: np.ndarray,
-                 params: Dict[str, np.ndarray],
-                 lanes: Dict[int, int],
+                 T: hr, l: km,
+                 vsl_speeds: time_space,
+                 demand: time_vec,
+                 downstream_density: time_vec,
+                 params: MetanetParams,
+                 lanes: lane_map,
                  real_data: bool = False,
-                 ) -> Tuple[np.ndarray, np.ndarray, float, float, np.ndarray]:
+                 ) -> tuple[space_vec, space_vec, float, float, space_vec]:
     """Compute a single simulation step (t -> t+1) for METANET.
 
     Args:
@@ -193,44 +190,28 @@ def metanet_step(t: int,
 
     return density_tp1, velocity_tp1, queue_tp1, flow_origin_tp1, flow_tp1
 
-def run_metanet_sim_plottable(*args, **kwargs) -> Tuple[
-        np.ndarray[tuple[int, int], np.dtype[np.float64]], 
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        float
-    ]:
+def run_metanet_sim_plottable(*args, **kwargs) -> tuple[time_space, time_space, time_space, veh_hr]:
     x = run_metanet_sim(*args, **kwargs, plotting=True)
     assert(len(x) == 4)
     return x
 
-def run_metanet_sim_end(*args, **kwargs) -> Tuple[
-        Tuple[float, float, float, float], 
-        float
-    ]:
+def run_metanet_sim_end(*args, **kwargs) -> tuple[MetanetState, veh_hr]:
     x = run_metanet_sim(*args, **kwargs, plotting=False, opt=False)
-    assert(len(x) == 2 and len(x[0]) == 4)
-    return x
+    assert(len(x) == 2)
+    state, total_travel_time = x
+    return state, total_travel_time
 
-def run_metanet_sim_opt(*args, **kwargs) -> Tuple[
-        np.ndarray[tuple[int, int], np.dtype[np.float64]], 
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        np.ndarray[tuple[int, int], np.dtype[np.float64]],
-        float
-    ]:
+def run_metanet_sim_opt(*args, **kwargs) -> tuple[time_space,time_space,time_space,time_space,time_space,veh_hr]:
     x = run_metanet_sim(*args, **kwargs, plotting=False, opt=True)
     assert(len(x) == 6)
     return x
 
-def run_metanet_sim(T: float,
-                    l: float,
-                    init_traffic_state: Tuple[np.ndarray, np.ndarray, float, float],
-                    demand: np.ndarray,
-                    downstream_density: np.ndarray,
-                    params: dict[str, np.ndarray[tuple, np.dtype[np.float64]]],
-                    vsl_speeds: Optional[np.ndarray] = None,
-                    lanes: Optional[dict[int, int]] = None,
+def run_metanet_sim(T: hr, l: km,
+                    init_traffic_state: MetanetState,
+                    demand: time_vec, downstream_density: time_vec,
+                    params: MetanetParams,
+                    vsl_speeds: time_space | None = None,
+                    lanes: lane_map | None = None,
                     plotting: bool = False,
                     real_data: bool = False,
                     opt: bool = False):
@@ -241,8 +222,7 @@ def run_metanet_sim(T: float,
       - If opt=True: returns (density, velocity, queue, flow_origin, V_fd, total_travel_time)
       - Else: returns ((density_T, velocity_T, flow_origin_T, queue_T), total_travel_time)
     """
-    time_steps = downstream_density.shape[0]
-    num_segments = init_traffic_state[0].shape[0]
+    time_steps, num_segments = downstream_density.shape[0], init_traffic_state[0].shape[0]
     # print(f"Running sim for time steps {time_steps}, segments {num_segments}")
 
     if vsl_speeds is None:
@@ -251,17 +231,18 @@ def run_metanet_sim(T: float,
         lanes = {i: 1 for i in range(num_segments)}
 
     initial_density, initial_velocity, initial_flow_or, initial_queue = init_traffic_state
+
     init_flow_or_real = origin_flow_dynamics_MN(
         demand[0], initial_density[0], initial_queue, lanes[0], T,
         p_max=180.0, p_crit=_get_time_space_param(params["p_crit"], 0, 0), q_capacity=_get_time_space_param(params["q_capacity"], 0, 0)
     )
 
     # Allocate histories
-    density = np.zeros((time_steps + 1, num_segments), dtype=float)
-    velocity = np.zeros((time_steps + 1, num_segments), dtype=float)
-    flow = np.zeros((time_steps + 1, num_segments), dtype=float)
-    queue = np.zeros((time_steps + 1, 1), dtype=float)
-    flow_origin = np.zeros((time_steps + 1, 1), dtype=float)
+    density: time_space = np.zeros((time_steps + 1, num_segments), dtype=float)
+    velocity: time_space = np.zeros((time_steps + 1, num_segments), dtype=float)
+    flow: time_space = np.zeros((time_steps + 1, num_segments), dtype=float)
+    queue: time_space = np.zeros((time_steps + 1, 1), dtype=float)
+    flow_origin: time_space = np.zeros((time_steps + 1, 1), dtype=float)
 
     # Initial conditions
     density[0] = initial_density
@@ -278,8 +259,7 @@ def run_metanet_sim(T: float,
             velocity[t],
             queue[t, 0],
             flow_origin[t, 0],
-            T=T,
-            l=l,
+            T=T, l=l,
             vsl_speeds=vsl_speeds,
             demand=demand,
             downstream_density=downstream_density,
@@ -293,16 +273,7 @@ def run_metanet_sim(T: float,
         flow[t + 1] = f_tp1
         flow_origin[t + 1, 0] = fo_tp1
 
-        # if t < time_steps - 1:
-            # print(t, fo_tp1, demand[t+1])
-    # print("Final flow origin:", flow_origin.T)
-    # print("Density sim:", density[:,0].T)
-    # print("Queue sim:", np.round(queue, 3).T)
-    # print(demand)
-    # print(params["p_crit"][0])
-
-    # Compute total travel time
-    total_travel_time = T * (
+    total_travel_time: veh_hr = T * float(
         sum([np.sum(density[:, i]) * lanes[i] * l for i in range(num_segments)])
         + np.sum(queue)
     )
@@ -319,5 +290,5 @@ def run_metanet_sim(T: float,
         )
         return density, velocity, queue, flow_origin, V_fd, total_travel_time
     else:
-        final_tuple = (density[-1], velocity[-1], float(flow_origin[-1, 0]), float(queue[-1, 0]))
+        final_tuple = MetanetState(density[-1], velocity[-1], float(flow_origin[-1, 0]), float(queue[-1, 0]))
         return final_tuple, total_travel_time

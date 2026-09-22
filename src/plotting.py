@@ -7,11 +7,9 @@ def plot_vsls(vsl_matrix: np.ndarray, time_steps: int, num_segm: int, v_free: fl
     (0,0) is the top left corner of the matrix. Rows represent time steps and columns represent segments.
     '''
     p = Plotter(1, 1)
-    p.fig.colorbar(
-      p[0].imshow(vsl_matrix.T, cmap='RdYlGn', aspect='auto', interpolation='none', vmin=0, vmax=v_free),
-      label='VSL speed (km/hr)'
-    )
-    p[0] = {'title': 'Optimal VSL Speeds', 'xlabel': 'Time Step', 'ylabel': 'Distance (km)',
+    p.fig.colorbar(p[0].imshow(vsl_matrix.T, cmap='RdYlGn', aspect='auto', interpolation='none', vmin=0, vmax=v_free),
+      label='VSL speed (km/hr)')
+    p[0] = {'title': 'Optimal VSL Speeds', 'xlabel': 'Time (min)', 'ylabel': 'Distance (km)',
             'xticks': np.arange(0, time_steps, 60), 'xticklabels': (np.arange(0, time_steps * T * 60, 60 * T * 60)).astype(int),
             'yticks': np.arange(0, num_segm, 2), 'yticklabels': np.round(np.arange(0, num_segm*l, 2*l), 2)}
     p[0].invert_yaxis()
