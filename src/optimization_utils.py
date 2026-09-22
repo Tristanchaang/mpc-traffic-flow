@@ -225,6 +225,48 @@ def fit_fd1(
         "Q_fd1": Q_fd1,
     }
 
+from pyomo.core.base.set import FiniteScalarRangeSet
+from pyomo.core.base.var import IndexedVar
+from pyomo.core.base.param import IndexedParam, ScalarParam
+from pyomo.core.base.objective import ScalarObjective
+from typing import cast
+
+class CalibrationModel(pyo.ConcreteModel):
+    # Index sets
+    t: FiniteScalarRangeSet
+    i: FiniteScalarRangeSet
+
+    # Ordinary attributes
+    num_segments: int
+    num_calibrated_segments: int
+
+    # Scalar parameters
+    T: ScalarParam
+    l: ScalarParam
+
+    # Either a fixed parameter or fitted variable
+    n_lanes: IndexedParam | IndexedVar
+
+    # Fitted variables
+    eta_high: IndexedVar
+    tau: IndexedVar
+    K: IndexedVar
+    rho_crit: IndexedVar
+    v_free: IndexedVar
+    a: IndexedVar
+    beta: IndexedVar
+    r_inflow: IndexedVar
+
+    # State variables
+    v_pred: IndexedVar
+    rho_pred: IndexedVar
+
+    # Data parameters
+    v_hat: IndexedParam
+    rho_hat: IndexedParam
+
+    loss: ScalarObjective
+
 def metanet_param_fit(
     v_hat,
     rho_hat,
@@ -263,39 +305,39 @@ def metanet_param_fit(
     # print(initial_flow_or.shape)
     # print(downstream_density.shape)
 
-    model = ConcreteModel(); assert isinstance(model, ConcreteModel)
+    model = cast(CalibrationModel, CalibrationModel())
 
-    model.t = RangeSet(0, num_timesteps - 1)
+    model.t = cast(FiniteScalarRangeSet, RangeSet(0, num_timesteps - 1))
     # model.t_loss = RangeSet(0, num_timesteps - 1, 10)
-    model.i = RangeSet(0, num_segments - 1)
+    model.i = cast(FiniteScalarRangeSet, RangeSet(0, num_segments - 1))
     # model.i = RangeSet(0, num_calibrated_segments - 1)
     model.num_segments = num_segments
     model.num_calibrated_segments = num_calibrated_segments
     model.constraints = ConstraintList()
 
     # Fixed params
-    model.T = Param(initialize=T)
-    model.l = Param(initialize=l)
+    model.T = ScalarParam(initialize=T)
+    model.l = ScalarParam(initialize=l)
 
     # Number of lanes (per calibrated segment)
     if lane_mapping is not None:
         # print(lane_mapping)
-        model.n_lanes = Param(model.i, initialize={i: lane_mapping[i] for i in model.i})
+        model.n_lanes = cast(IndexedParam, Param(model.i, initialize={i: lane_mapping[i] for i in model.i}))
     elif varylanes:
-        model.n_lanes = Var(model.i, bounds=(3, 5), initialize=3)
+        model.n_lanes = cast(IndexedVar, Var(model.i, bounds=(3, 5), initialize=3))
     else:
-        model.n_lanes = Param(model.i, initialize=4)
+        model.n_lanes = cast(IndexedParam, Param(model.i, initialize=4))
 
     # Parameters to estimate
     if warmstart is not None:
         params = METANET_Params(path=warmstart, num_segments=num_calibrated_segments).get_params()
 
-        model.eta_high = Var(model.i, bounds=(10.0, 90.0))
-        model.tau = Var(model.i, bounds=(10.0 / 3600, 60.0 / 3600))
-        model.K = Var(model.i, bounds=(5.0, 60.0))
-        model.rho_crit = Var(model.i, bounds=(15, 100))
-        model.v_free = Var(model.i, bounds=(70, 140))
-        model.a = Var(model.i, bounds=(0.5, 5))
+        model.eta_high = cast(IndexedVar, Var(model.i, bounds=(10.0, 90.0)))
+        model.tau = cast(IndexedVar, Var(model.i, bounds=(10.0 / 3600, 60.0 / 3600)))
+        model.K = cast(IndexedVar, Var(model.i, bounds=(5.0, 60.0)))
+        model.rho_crit = cast(IndexedVar, Var(model.i, bounds=(15, 100)))
+        model.v_free = cast(IndexedVar, Var(model.i, bounds=(70, 140)))
+        model.a = cast(IndexedVar, Var(model.i, bounds=(0.5, 5)))
 
         for i in range(num_segments):
             model.eta_high[i] = params["eta_high"][i]
@@ -312,16 +354,12 @@ def metanet_param_fit(
         # model.rho_crit = Var(model.i, bounds=(15, 100), initialize=37.45)
         # model.v_free = Var(model.i, bounds=(110, 150), initialize=120.0)
         # model.a = Var(model.i, bounds=(0.5, 5), initialize=1.4)
-        model.eta_high = Var(model.i, bounds=(10.0, 90.0), initialize=30.0)
-        model.tau = Var(
-            model.i, bounds=(10.0 / 3600, 60.0 / 3600), initialize=18 / 3600
-        )
-        model.K = Var(model.i, bounds=(5.0, 60.0), initialize=40.0)
-        model.rho_crit = Var(
-            model.i, bounds=(15, 95), initialize=37.45
-        )
-        model.v_free = Var(model.i, bounds=(70, 150), initialize=120.0)
-        model.a = Var(model.i, bounds=(0.5, 5), initialize=1.4)
+        model.eta_high = cast(IndexedVar, Var(model.i, bounds=(10.0, 90.0), initialize=30.0))
+        model.tau = cast(IndexedVar, Var(model.i, bounds=(10.0 / 3600, 60.0 / 3600), initialize=18 / 3600))
+        model.K = cast(IndexedVar, Var(model.i, bounds=(5.0, 60.0), initialize=40.0))
+        model.rho_crit = cast(IndexedVar, Var(model.i, bounds=(15, 95), initialize=37.45))
+        model.v_free = cast(IndexedVar, Var(model.i, bounds=(70, 150), initialize=120.0))
+        model.a = cast(IndexedVar, Var(model.i, bounds=(0.5, 5), initialize=1.4))
 
         ## I-24 Bounds
         # model.eta_high = Var(model.i, bounds=(10.0, 90.0), initialize=30.0)
@@ -351,8 +389,8 @@ def metanet_param_fit(
 
     if include_ramping:    
         if time_varying_ramps:
-            model.beta = Var(model.i, bounds=(1e-3, 0.6), initialize=1e-3)
-            model.r_inflow = Var(model.t, model.i, bounds=(1e-3, 2000), initialize=1e-3)
+            model.beta = cast(IndexedVar, Var(model.i, bounds=(1e-3, 0.6), initialize=1e-3))
+            model.r_inflow = cast(IndexedVar, Var(model.t, model.i, bounds=(1e-3, 2000), initialize=1e-3))
             
             if ramp_mapping is not None:
                 assert("on_ramps" in ramp_mapping and "off_ramps" in ramp_mapping), "If include_ramping is True, ramp_mapping must contain 'on_ramps' and 'off_ramps' keys."
@@ -362,12 +400,15 @@ def metanet_param_fit(
                 for i in range(num_segments):
                     if not on_ramps[i]:
                         for t in range(num_timesteps):
-                            model.r_inflow[t, i].fix(1e-3)
+                            model.r_inflow[t, i].set_value(1e-3)
+                            model.r_inflow[t, i].fix()
 
                     if not off_ramps[i]:
                         if tee:
                             print(f"seg {i} is not an off-ramp, fixing beta to 1e-3")
-                        model.beta[i].fix(1e-3)
+                        model.beta[i].set_value(1e-3)
+                        model.beta[i].fix()
+
 
                     if fixed_inflows is not None and i in fixed_inflows:
                         for t in range(num_timesteps):
@@ -379,8 +420,8 @@ def metanet_param_fit(
                         model.beta[i] = params["beta"][i]
                         model.r_inflow[t, i] = params["r"][t, i]
         else:
-            model.beta = Var(model.i, bounds=(1e-3, 0.9), initialize=1e-3)
-            model.r_inflow = Var(model.i, bounds=(1e-3, 2000), initialize=1e-3)
+            model.beta = cast(IndexedVar, Var(model.i, bounds=(1e-3, 0.9), initialize=1e-3))
+            model.r_inflow = cast(IndexedVar, Var(model.i, bounds=(1e-3, 2000), initialize=1e-3))
             
             if ramp_mapping is not None:
                 assert("on_ramps" in ramp_mapping and "off_ramps" in ramp_mapping), "If include_ramping is True, ramp_mapping must contain 'on_ramps' and 'off_ramps' keys."
@@ -389,12 +430,14 @@ def metanet_param_fit(
                 off_ramps = ramp_mapping["off_ramps"]
                 for i in range(num_segments):
                     if not on_ramps[i]:
-                        model.r_inflow[i].fix(1e-3)
+                        model.r_inflow[i].set_value(1e-3)
+                        model.r_inflow[i].fix()
 
                     if not off_ramps[i]:
                         if tee:
                             print(f"seg {i} is not an off-ramp, fixing beta to 1e-3")
-                        model.beta[i].fix(1e-3)
+                        model.beta[i].set_value(1e-3)
+                        model.beta[i].fix()
 
             if warmstart is not None:
                 for i in range(num_segments):
@@ -403,22 +446,22 @@ def metanet_param_fit(
                         model.r_inflow[i] = params["r"][i]
 
     else:
-        model.beta = Var(model.i, bounds=(0.0, 0.0), initialize=0.0)
-        model.r_inflow = Var(model.i, bounds=(0.0, 0.0), initialize=0.0)
+        model.beta = cast(IndexedVar, Var(model.i, bounds=(0.0, 0.0), initialize=0.0))
+        model.r_inflow = cast(IndexedVar, Var(model.i, bounds=(0.0, 0.0), initialize=0.0))
     # Variables to predict (per-lane values)
 
-    model.v_pred = Var(
+    model.v_pred = cast(IndexedVar, Var(
         model.t,
         model.i,
         bounds=(1e-3, 150),
         initialize={(t, i): float(v_hat[t, i]) for t in model.t for i in model.i},
-    )
-    model.rho_pred = Var(
+    ))
+    model.rho_pred = cast(IndexedVar, Var(
         model.t,
         model.i,
         bounds=(1e-3, 400),
         initialize={(t, i): float(rho_hat[t, i]) for t in model.t for i in model.i},
-    )
+    ))
     # model.q_pred = Var(
     #     model.t,
     #     model.i,
@@ -432,16 +475,16 @@ def metanet_param_fit(
         model.constraints.add(model.rho_pred[0, i] == rho_hat[0, i].item())
 
     # Observed data
-    model.v_hat = Param(
+    model.v_hat = cast(IndexedParam, Param(
         model.t,
         model.i,
         initialize={(t, i): float(v_hat[t, i]) for t in model.t for i in model.i},
-    )
-    model.rho_hat = Param(
+    ))
+    model.rho_hat = cast(IndexedParam, Param(
         model.t,
         model.i,
         initialize={(t, i): float(rho_hat[t, i]) for t in model.t for i in model.i},
-    )
+    ))
     # model.q_hat = Param(
     #     model.t,
     #     model.i,
@@ -641,7 +684,7 @@ def metanet_param_fit(
 
         return loss_fn
     
-    model.loss = Objective(rule=loss_fn, sense=minimize)
+    model.loss = cast(ScalarObjective, Objective(rule=loss_fn, sense=minimize))
 
     # Solve
     solver = SolverFactory("ipopt")
@@ -672,6 +715,25 @@ def metanet_param_fit(
     solver_results = solver.solve(model, tee=tee)
 
     return model, solver_results
+
+from pyomo.core.base.constraint import IndexedConstraint
+from pyomo.core.base.expression import IndexedExpression
+from pyomo.core.base.var import ScalarVar
+
+class RobustCalibrationModel(CalibrationModel):
+    s: FiniteScalarRangeSet
+
+    initial_flow: IndexedParam
+
+    init_v: IndexedConstraint
+    init_rho: IndexedConstraint
+    rho_dyn: IndexedConstraint
+    v_dyn: IndexedConstraint
+    z_con: IndexedConstraint
+
+    L: IndexedExpression
+    z: ScalarVar
+    obj: ScalarObjective
 
 def metanet_param_fit_robust(
     v_hat,
@@ -734,55 +796,50 @@ def metanet_param_fit_robust(
     # Optional: clip to keep physical positivity
     # inflow_s = np.clip(inflow_s, 1e-3, None)
 
-
-    m = ConcreteModel(); assert isinstance(m, ConcreteModel)
-    m.s = RangeSet(0, S - 1)
-    m.t = RangeSet(0, num_timesteps - 1)
-    m.i = RangeSet(0, num_segments - 1)
+    m = cast(RobustCalibrationModel, RobustCalibrationModel())
+    m.s = cast(FiniteScalarRangeSet, RangeSet(0, S - 1))
+    m.t = cast(FiniteScalarRangeSet, RangeSet(0, num_timesteps - 1))
+    m.i = cast(FiniteScalarRangeSet, RangeSet(0, num_segments - 1))
     m.constraints = ConstraintList()
 
     # Fixed params
-    m.T = Param(initialize=float(T))
-    m.l = Param(initialize=float(l))
+    m.T = cast(ScalarParam, Param(initialize=float(T)))
+    m.l = cast(ScalarParam, Param(initialize=float(l)))
 
     # Number of lanes (per segment) — matches your pattern
     if lane_mapping is not None:
-        m.n_lanes = Param(m.i, initialize={i: lane_mapping[i] for i in range(num_segments)})
+        m.n_lanes = cast(IndexedParam, Param(m.i, initialize={i: lane_mapping[i] for i in range(num_segments)}))
     elif varylanes:
-        m.n_lanes = Var(m.i, bounds=(3, 5), initialize=3)
+        m.n_lanes = cast(IndexedVar, Var(m.i, bounds=(3, 5), initialize=3))
     else:
-        m.n_lanes = Param(m.i, initialize=4)
+        m.n_lanes = cast(IndexedParam, Param(m.i, initialize=4))
 
     # Shared parameters to estimate (same as your metanet_param_fit)
     if warmstart is not None:
         params = METANET_Params(path=warmstart, num_segments=num_calibrated_segments).get_params()
 
-        m.eta_high = Var(m.i, bounds=(10.0, 90.0))
-        m.tau = Var(m.i, bounds=(10.0 / 3600, 60.0 / 3600))
-        m.K = Var(m.i, bounds=(5.0, 60.0))
-        m.rho_crit = Var(m.i, bounds=(15, 100))
-        m.v_free = Var(m.i, bounds=(70, 150))
-        m.a = Var(m.i, bounds=(0.5, 5))
+        m.eta_high = cast(IndexedVar, Var(m.i, bounds=(10.0, 90.0)))
+        m.tau = cast(IndexedVar, Var(m.i, bounds=(10.0 / 3600, 60.0 / 3600)))
+        m.K = cast(IndexedVar, Var(m.i, bounds=(5.0, 60.0)))
+        m.rho_crit = cast(IndexedVar, Var(m.i, bounds=(15, 100)))
+        m.v_free = cast(IndexedVar, Var(m.i, bounds=(70, 150)))
+        m.a = cast(IndexedVar, Var(m.i, bounds=(0.5, 5)))
 
         for i in range(num_segments):
-            m.eta_high[i].value = params["eta_high"][i]
-            m.tau[i].value = params["tau"][i]
-            m.K[i].value = params["K"][i]
-            m.rho_crit[i].value = params["p_crit"][i]
-            m.v_free[i].value = params["v_free"][i]
-            m.a[i].value = params["a"][i]
+            m.eta_high[i] = params["eta_high"][i]
+            m.tau[i] = params["tau"][i]
+            m.K[i] = params["K"][i]
+            m.rho_crit[i] = params["p_crit"][i]
+            m.v_free[i] = params["v_free"][i]
+            m.a[i] = params["a"][i]
     
     else:
-        m.eta_high = Var(m.i, bounds=(10.0, 90.0), initialize=30.0)
-        m.tau = Var(
-            m.i, bounds=(10.0 / 3600, 60.0 / 3600), initialize=18 / 3600
-        )
-        m.K = Var(m.i, bounds=(5.0, 60.0), initialize=40.0)
-        m.rho_crit = Var(
-            m.i, bounds=(15, 100), initialize=37.45
-        )
-        m.v_free = Var(m.i, bounds=(70, 150), initialize=120.0)
-        m.a = Var(m.i, bounds=(0.5, 5), initialize=1.4)
+        m.eta_high = cast(IndexedVar, Var(m.i, bounds=(10.0, 90.0), initialize=30.0))
+        m.tau = cast(IndexedVar, Var(m.i, bounds=(10.0 / 3600, 60.0 / 3600), initialize=18 / 3600))
+        m.K = cast(IndexedVar, Var(m.i, bounds=(5.0, 60.0), initialize=40.0))
+        m.rho_crit = cast(IndexedVar, Var(m.i, bounds=(15, 100), initialize=37.45))
+        m.v_free = cast(IndexedVar, Var(m.i, bounds=(70, 150), initialize=120.0))
+        m.a = cast(IndexedVar, Var(m.i, bounds=(0.5, 5), initialize=1.4))
 
     # m.eta_high = Var(m.i, bounds=(10.0, 90.0), initialize=30.0)
     # m.tau = Var(m.i, bounds=(1.0 / 3600, 60.0 / 3600), initialize=18 / 3600)
@@ -792,7 +849,8 @@ def metanet_param_fit_robust(
     # m.a = Var(m.i, bounds=(0.5, 5), initialize=1.4)
 
     if include_ramping:
-        assert("on_ramps" in ramp_mapping and "off_ramps" in ramp_mapping), "If include_ramping is True, ramp_mapping must contain 'on_ramps' and 'off_ramps' keys."
+        assert ramp_mapping is not None
+        assert "on_ramps" in ramp_mapping and "off_ramps" in ramp_mapping, "If include_ramping is True, ramp_mapping must contain 'on_ramps' and 'off_ramps' keys."
 
         if ramp_mapping is not None:
             on_ramps = ramp_mapping["on_ramps"]
@@ -809,16 +867,16 @@ def metanet_param_fit_robust(
                     m.beta[i] = Param(bounds=(1e-3, 1e-3), initialize=1e-3)
         else:
             # Assume there is an on and off ramp at every segment
-            m.beta = Var(m.i, bounds=(1e-3, 0.9), initialize=1e-3)
-            m.r_inflow = Var(m.i, bounds=(0, 2000), initialize=1e-3)
+            m.beta = cast(IndexedVar, Var(m.i, bounds=(1e-3, 0.9), initialize=1e-3))
+            m.r_inflow = cast(IndexedVar, Var(m.i, bounds=(0, 2000), initialize=1e-3))
 
         if warmstart is not None:
             for i in range(num_segments):
-                m.beta[i].value = params["beta"][i]
-                m.r_inflow[i].value = params["r"][i]
+                m.beta[i] = params["beta"][i]
+                m.r_inflow[i] = params["r"][i]
     else:
-        m.beta = Var(m.i, bounds=(0.0, 0.0), initialize=0.0)
-        m.r_inflow = Var(m.i, bounds=(0.0, 0.0), initialize=0.0)
+        m.beta = cast(IndexedVar, Var(m.i, bounds=(0.0, 0.0), initialize=0.0))
+        m.r_inflow = cast(IndexedVar, Var(m.i, bounds=(0.0, 0.0), initialize=0.0))
 
     # Scenario-specific predicted states
     # if warmstart is not None:
@@ -859,20 +917,20 @@ def metanet_param_fit_robust(
     
     # q_init = p_init * v_init
 
-    m.v_pred = Var(m.s, m.t, m.i, bounds=(1e-3, 150),
-                   initialize={(s, t, i): float(v_hat[t, i]) for s in m.s for t in m.t for i in m.i})
-    m.rho_pred = Var(m.s, m.t, m.i, bounds=(1e-3, 400),
-                     initialize={(s, t, i): float(rho_hat[t, i]) for s in m.s for t in m.t for i in m.i})
+    m.v_pred = cast(IndexedVar, Var(m.s, m.t, m.i, bounds=(1e-3, 150),
+                   initialize={(s, t, i): float(v_hat[t, i]) for s in m.s for t in m.t for i in m.i}))
+    m.rho_pred = cast(IndexedVar, Var(m.s, m.t, m.i, bounds=(1e-3, 400),
+                     initialize={(s, t, i): float(rho_hat[t, i]) for s in m.s for t in m.t for i in m.i}))
     # m.q_pred = Var(m.s, m.t, m.i, bounds=(1e-3, 10000),
     #               initialize={(s, t, i): float(q_hat[t, i]) for s in m.s for t in m.t for i in m.i})
 
     # Observed data params (shared across scenarios)
-    m.v_hat = Param(m.t, m.i, initialize={(t, i): float(v_hat[t, i]) for t in range(num_timesteps) for i in range(num_segments)})
-    m.rho_hat = Param(m.t, m.i, initialize={(t, i): float(rho_hat[t, i]) for t in range(num_timesteps) for i in range(num_segments)})
+    m.v_hat = cast(IndexedParam, Param(m.t, m.i, initialize={(t, i): float(v_hat[t, i]) for t in range(num_timesteps) for i in range(num_segments)}))
+    m.rho_hat = cast(IndexedParam, Param(m.t, m.i, initialize={(t, i): float(rho_hat[t, i]) for t in range(num_timesteps) for i in range(num_segments)}))
     #m.q_hat = Param(m.t, m.i, initialize={(t, i): float(q_hat[t, i]) for t in range(num_timesteps) for i in range(num_segments)})
 
     # Boundary conditions (scenario-specific)
-    m.initial_flow = Param(m.s, m.t, initialize={(s, t): float(inflow_s[s, t, 0]) for s in range(S) for t in range(num_timesteps)})
+    m.initial_flow = cast(IndexedParam, Param(m.s, m.t, initialize={(s, t): float(inflow_s[s, t, 0]) for s in range(S) for t in range(num_timesteps)}))
     #m.downstream_density = Param(m.s, m.t, initialize={(s, t): float(down_s[s, t, 0]) for s in range(S) for t in range(num_timesteps)})
 
     # --- dynamics functions (same form as your code) ---
@@ -896,11 +954,11 @@ def metanet_param_fit_robust(
     # --- initial conditions (for every scenario) ---
     def init_v_rule(mm, s, i):
         return mm.v_pred[s, 0, i] == mm.v_hat[0, i]
-    m.init_v = Constraint(m.s, m.i, rule=init_v_rule)
+    m.init_v = cast(IndexedConstraint, Constraint(m.s, m.i, rule=init_v_rule))
 
     def init_rho_rule(mm, s, i):
         return mm.rho_pred[s, 0, i] == mm.rho_hat[0, i]
-    m.init_rho = Constraint(m.s, m.i, rule=init_rho_rule)
+    m.init_rho = cast(IndexedConstraint, Constraint(m.s, m.i, rule=init_rho_rule))
 
     # --- density dynamics ---
     def rho_update(mm, s, t, i):
@@ -923,7 +981,7 @@ def metanet_param_fit_robust(
             current, inflow, outflow, mm.T, mm.l, mm.n_lanes[i], beta_, r_in_
         )
 
-    m.rho_dyn = Constraint(m.s, m.t, m.i, rule=rho_update)
+    m.rho_dyn = cast(IndexedConstraint, Constraint(m.s, m.t, m.i, rule=rho_update))
 
     # --- velocity dynamics ---
     VSL = 150
@@ -952,7 +1010,7 @@ def metanet_param_fit_robust(
             mm, current, prev_state, density, next_density, VSL, mm.T, mm.l, seg
         )
 
-    m.v_dyn = Constraint(m.s, m.t, m.i, rule=v_update)
+    m.v_dyn = cast(IndexedConstraint, Constraint(m.s, m.t, m.i, rule=v_update))
 
     # --- robust objective ---
     v_max = max(m.v_hat[t, i] for t in m.t for i in m.i)
@@ -983,28 +1041,30 @@ def metanet_param_fit_robust(
                 
         return loss_fn
 
-    m.L = pyo.Expression(m.s, rule=scenario_loss)
+    m.L = cast(IndexedExpression, pyo.Expression(m.s, rule=scenario_loss))
 
     # epigraph for worst-case loss
     if objective_mode == "mean":
-        m.obj = Objective(
-            expr=(sum(m.L[s] for s in m.s) / S),
-            sense=minimize
+        m.obj = cast(ScalarObjective,
+            Objective(
+                expr=(pyo.quicksum(m.L[s] for s in m.s) / S),
+                sense=minimize
+            )
         )
     elif objective_mode in {"minmax", "mean_plus_worst"}:
-        m.z = Var(bounds=(0, None), initialize=0.0)
+        m.z = cast(ScalarVar, Var(bounds=(0, None), initialize=0.0))
 
         def z_ge_loss(mm, s):
             return mm.z >= mm.L[s]
-        m.z_con = Constraint(m.s, rule=z_ge_loss)
+        m.z_con = cast(IndexedConstraint, Constraint(m.s, rule=z_ge_loss))
 
         if objective_mode == "minmax":
-            m.obj = Objective(expr=m.z, sense=minimize)
+            m.obj = cast(ScalarObjective, Objective(expr=m.z, sense=minimize))
         elif objective_mode == "mean_plus_worst":
-            m.obj = Objective(
-                expr=(1.0 - lam_worst) * (sum(m.L[s] for s in m.s) / S) + lam_worst * m.z,
+            m.obj = cast(ScalarObjective, Objective(
+                expr=(1.0 - lam_worst) * (pyo.quicksum(m.L[s] for s in m.s) / S) + lam_worst * m.z,
                 sense=minimize
-            )
+            ))
     else:
         raise ValueError("objective_mode must be 'minmax' or 'mean_plus_worst' or 'mean'")
 
@@ -1176,7 +1236,7 @@ def run_calibration(
         assert isinstance(robust_opt, RobustOptConfig)
         assert robust_opt.objective_mode in ["minmax", "mean_plus_worst", "mean"]
 
-        res_model: ConcreteModel = metanet_param_fit_robust(
+        res_model: CalibrationModel = metanet_param_fit_robust(
             segment_v_hat,
             segment_rho_hat,
             segment_q_hat,
@@ -1274,7 +1334,9 @@ def run_calibration(
     results["beta"] = np.array(results["beta"])
     results["r_inflow"] = np.array(results["r_inflow"])
 
-    results["obj_val"] = float(value(res_model.loss))              # <<<
+    final_loss = value(res_model.loss)
+    assert final_loss is not None
+    results["obj_val"] = float(final_loss)              # <<<
     results["solver_status"] = str(_ss)                                # <<<
     results["termination_condition"] = str(_tc)                        # <<<
     return results

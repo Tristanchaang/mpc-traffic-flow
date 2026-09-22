@@ -219,7 +219,7 @@ if __name__ == "__main__":
     total_distance = 10
     num_segments = int(total_distance/0.4)
 
-    sim_lanes = {i: 4 if i < num_segments-5 else 2 for i in range(num_segments)}
+    sim_lanes = {i: 4. if i < num_segments-5 else 2. for i in range(num_segments)}
     params = METANET_Params(path=None, num_segments=num_segments).get_params()
     num_scenarios = 14 * 2 + 1
     p_min = 5100

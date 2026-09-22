@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from viz import Plotter
+
 def get_virtual_trajectory(speed_field, time_start, space_start, d_time, d_space, direction=-1):
     # Initialize the trajectory mask with zeros
     trajectory_mask = np.zeros_like(speed_field)
@@ -101,17 +103,13 @@ def vt_travel_time_stats(macro_velocity_field, time_step=10/3600, num_samples=50
         print(f"Standard deviation of vehicle travel time: {np.std(vt_times, ddof=1)} min")
 
         # Let's visualize the virtual trajectory
-        plt.figure(figsize=(15, 5))
-        plt.imshow(macro_velocity_field, aspect='auto', interpolation='None', cmap='RdYlGn', extent=[0, time_steps, 0, m])
-        plt.xlim(0, time_steps)
-        plt.yticks(np.arange(0, m + 1, 1))
-        plt.xticks(np.arange(0, time_steps + 1, 10), labels=[int(i * 10 / 60) if i % 120 == 0 else None for i in range(0, time_steps+1, 10)])
-        plt.colorbar(label='Velocity (km/hr)')
-        plt.xlabel('Time (min)')
-        plt.ylabel('Space (segments)')
+        p = Plotter(1, 1)
+        p.fig.colorbar(p[0].imshow(macro_velocity_field, aspect='auto', interpolation='None', cmap='RdYlGn', extent=(0, time_steps, 0, m)), ax=p[0], label='Velocity (km/hr)')
+        p[0] = {'xlabel': 'Time (min)', 'ylabel': 'Space (segments)', 'title': 'Virtual Trajectory',
+                'xlim': (0, time_steps), 'xticks': np.arange(0, time_steps + 1, 10), 'yticks': np.arange(0, m + 1, 1),
+                'xticklabels': tuple(str(int(i * 10 / 60)) if i % 120 == 0 else None for i in range(0, time_steps+1, 10))}
         for time_points, space_points in virtual_trajectories:
-            plt.plot(time_points, 15 - np.array(space_points), color='blue', linewidth=1)
-        plt.title('Virtual Trajectory')
-        plt.grid()
-        plt.show()
+            p[0].plot(time_points, 15 - np.array(space_points), color='blue', linewidth=1)
+        p[0].grid()
+        p.show()
     return vt_times

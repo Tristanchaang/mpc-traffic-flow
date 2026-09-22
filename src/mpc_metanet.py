@@ -127,8 +127,7 @@ def mpc_opt(
     # ------------------------------------------------------------------
     # Model
     # ------------------------------------------------------------------
-    model = MPCModel() 
-    assert isinstance(model, pyo.ConcreteModel)
+    model = cast(MPCModel, MPCModel()) 
 
     def vsl_bounds(model, h, m):
         if control_zone is not None and m not in control_zone:
