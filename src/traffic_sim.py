@@ -4,7 +4,7 @@ from sim_types import *
 # Core METANET helper functions
 # ----------------------------
 
-def density_dynamics(current: float, inflow: float, outflow: float, lanes: float, T: float, l: float,
+def density_dynamics(current: float, inflow: float, outflow: float, lanes: float, T: hr, l: km,
                      gamma: float = 1.0, beta: float = 0.0, r: float = 0.0) -> float:
     """Update density with conservation equation (per segment).
     """
@@ -16,7 +16,7 @@ def flow_dynamics(density: float, velocity: float, lanes: float) -> float:
     return density * velocity * lanes
 
 
-def queue_dynamics(current: float, demand: float, flow_origin: float, T: float) -> float:
+def queue_dynamics(current: float, demand: float, flow_origin: float, T: hr) -> float:
     return current + T * (demand - flow_origin)
 
 
@@ -39,11 +39,11 @@ def velocity_dynamics_MN(current: float,
                          density: float,
                          next_density: float,
                          v_ctrl: float,
-                         T: float,
-                         l: float,
+                         T: hr,
+                         l: km,
                          eta_high: float = 30.0,
                          K: float = 40.0,
-                         tau: float = 18 / 3600,
+                         tau: hr = 18 / 3600,
                          a: float = 1.4,
                          p_crit: float = 37.45,
                          v_free: float = 120.0) -> float:
@@ -89,7 +89,6 @@ def metanet_step(t: int,
                  velocity_t: space_vec,
                  queue_t: float,
                  flow_origin_t: float,
-                 *,
                  T: hr, l: km,
                  vsl_speeds: time_space,
                  demand: time_vec,
@@ -286,3 +285,153 @@ def run_metanet_sim(T: hr, l: km,
     else:
         final_state = MetanetState(density[-1], velocity[-1], float(flow_origin[-1, 0]), float(queue[-1, 0]))
         return final_state, total_travel_time
+
+
+# TODO: USE METANET_State to simplify step() function (State -> State)
+class METANET_Simulator:
+    """Wrapper class for running METANET simulations with a given set of parameters and initial state."""
+    def __init__(self, T: hr, l: km, time_steps: int, num_segments: int, params: MetanetParams, 
+                 lanes: lane_map | None = None, real_data: bool = False):
+
+        self.time_steps: int = time_steps
+        self.num_segments: int = num_segments
+        self.real_data: bool = real_data
+
+        self.T: hr = T
+        self.l: km = l
+
+        self.params: MetanetParams = params
+
+        self.lanes: lane_map = lanes if lanes is not None and len(lanes) > 0 else {i: 1 for i in range(self.num_segments)}
+
+    def _initialize(self, demand: time_vec, downstream_density: time_vec, 
+                    init_traffic_state: MetanetState, vsl_speeds: time_space | None = None):
+        self.downstream_density: time_vec = downstream_density
+        self.demand: time_vec = demand
+        self.vsl_speeds: time_space = vsl_speeds if vsl_speeds is not None else np.full((self.time_steps, self.num_segments), 1000)
+
+        initial_density, initial_velocity, initial_flow_or, initial_queue = init_traffic_state
+        self.cur_state = MetanetState(
+            initial_density,
+            initial_velocity,
+            initial_flow_or if self.real_data else origin_flow_dynamics_MN(
+                self.demand[0], initial_density[0], initial_queue, self.lanes[0], self.T,
+                p_max=180.0, p_crit=_get_time_space_param(self.params["p_crit"], 0, 0), q_capacity=_get_time_space_param(self.params["q_capacity"], 0, 0)
+            ),
+            initial_queue
+        )
+
+    def _step(self, t: int, cur_state: MetanetState) -> MetanetState:
+        density_t, velocity_t, flow_origin_t, queue_t = cur_state
+        density_tp1 = np.empty_like(density_t, dtype=float)
+        # --- density update ---
+        for i in range(self.num_segments):
+            beta = _get_time_space_param(self.params["beta"], t if np.ndim(self.params["beta"]) == 2 else 0, i)
+            r = _get_time_space_param(self.params["r"], t if np.ndim(self.params["r"]) == 2 else 0, i)
+            gamma = _get_time_space_param(self.params["gamma"], 0, i)
+    
+            if i == 0:
+                inflow = self.demand[t] if self.real_data else flow_origin_t
+                outflow = density_t[i] * velocity_t[i] * self.lanes[i]
+                density_tp1[i] = density_dynamics(density_t[i], inflow, outflow, self.lanes[i], self.T, self.l,
+                                                    gamma=gamma, beta=beta, r=r)
+            else:
+                inflow = density_t[i - 1] * velocity_t[i - 1] * self.lanes[i - 1]
+                outflow = density_t[i] * velocity_t[i] * self.lanes[i]
+                density_tp1[i] = density_dynamics(density_t[i], inflow, outflow, self.lanes[i], self.T, self.l,
+                                                    gamma=gamma, beta=beta, r=r)
+        # --- velocity update ---
+        velocity_tp1 = np.empty_like(velocity_t, dtype=float)
+        for i in range(self.num_segments):
+            kwargs = dict(
+                eta_high=_get_time_space_param(self.params["eta_high"], t, i),
+                K=_get_time_space_param(self.params["K"], t, i),
+                tau=_get_time_space_param(self.params["tau"], t, i),
+                a=_get_time_space_param(self.params["a"], t, i),
+                p_crit=_get_time_space_param(self.params["p_crit"], t, i),
+                v_free=_get_time_space_param(self.params["v_free"], t, i),
+            )
+            if i == 0:
+                prev_vel = velocity_t[i]
+                next_dens = density_t[i + 1] if self.num_segments > 1 else self.downstream_density[t]
+                velocity_tp1[i] = velocity_dynamics_MN(
+                    velocity_t[i], prev_vel, density_t[i], next_dens, self.vsl_speeds[t, i], self.T, self.l, **kwargs
+                )
+            elif i == self.num_segments - 1:
+                velocity_tp1[i] = velocity_dynamics_MN(
+                    velocity_t[i], velocity_t[i - 1], density_t[i], self.downstream_density[t], self.vsl_speeds[t, i], self.T, self.l, **kwargs
+                )
+            else:
+                velocity_tp1[i] = velocity_dynamics_MN(
+                    velocity_t[i], velocity_t[i - 1], density_t[i], density_t[i + 1], self.vsl_speeds[t, i], self.T, self.l, **kwargs
+                )
+    
+        # --- queue update (only when not using real data) ---
+        if not self.real_data:
+            queue_tp1 = queue_dynamics(queue_t, self.demand[t], flow_origin_t, self.T)
+        else:
+            queue_tp1 = queue_t
+        # --- origin flow update (only when not using real data) ---
+        if t+1 >= self.demand.shape[0]:
+            flow_origin_tp1 = 0
+        elif self.real_data:
+            flow_origin_tp1 = flow_origin_t
+        else:
+            pcrit0 = _get_time_space_param(self.params["p_crit"], t+1, 0)
+            qcap0 = _get_time_space_param(self.params["q_capacity"], t+1, 0)
+            flow_origin_tp1 = origin_flow_dynamics_MN(
+                self.demand[t + 1], density_tp1[0], queue_tp1, self.lanes[0], self.T, p_max=180.0, p_crit=pcrit0, q_capacity=qcap0
+            )
+    
+        return MetanetState(density_tp1, velocity_tp1, flow_origin_tp1, queue_tp1)
+
+    def run(self, demand: time_vec, downstream_density: time_vec, init_traffic_state: MetanetState, 
+            vsl_speeds: time_space | None = None) -> tuple[MetanetState, veh_hr]:
+            self._initialize(demand, downstream_density, init_traffic_state, vsl_speeds)
+            lanes_array = np.array([self.lanes[i] for i in range(self.num_segments)])
+            ttt: veh_hr = self.T * float(self.l * (self.cur_state.density @ lanes_array) + self.cur_state.queue)
+            for t in range(self.time_steps):
+                self.cur_state = self._step(t, self.cur_state)
+                ttt += self.T * float(self.l * (self.cur_state.density @ lanes_array) + self.cur_state.queue)
+            return self.cur_state, ttt
+
+    def run_with_history(self, demand: time_vec, downstream_density: time_vec, init_traffic_state: MetanetState,
+                        vsl_speeds: time_space | None = None) -> tuple[time_space, time_space, time_space, veh_hr]:
+
+        self._initialize(demand, downstream_density, init_traffic_state, vsl_speeds)
+
+        # Allocate histories
+        density: time_space = np.empty((self.time_steps + 1, self.num_segments), dtype=float)
+        velocity: time_space = np.empty_like(density)
+        queue: time_space = np.empty((self.time_steps + 1, 1), dtype=float)
+
+        for t in range(self.time_steps + 1):
+            state = self.cur_state
+            density[t], velocity[t], _, queue[t, 0] = state
+            if t < self.time_steps: self.cur_state = self._step(t, state)
+
+        total_travel_time: veh_hr = self.T * (
+            self.l * (density.sum(axis=0) @ np.array([self.lanes[i] for i in range(self.num_segments)]))
+            + queue.sum()
+        )
+        return density, velocity, queue, total_travel_time
+
+    def run_with_opt(self, demand: time_vec, downstream_density: time_vec, 
+                     init_traffic_state: MetanetState, vsl_speeds: time_space | None = None
+                     ) -> tuple[time_space, time_space, time_space, time_space, time_space, veh_hr]:
+        self._initialize(demand, downstream_density, init_traffic_state, vsl_speeds)
+        # Allocate histories
+        density: time_space = np.empty((self.time_steps + 1, self.num_segments), dtype=float)
+        velocity: time_space = np.empty_like(density)
+        queue: time_space = np.empty((self.time_steps + 1, 1), dtype=float)
+        flow_origin: time_space = np.empty((self.time_steps + 1, 1), dtype=float)
+        for t in range(self.time_steps + 1):
+            state = self.cur_state
+            density[t], velocity[t], flow_origin[t, 0], queue[t, 0] = state
+            if t < self.time_steps: self.cur_state = self._step(t, state)
+        total_travel_time: veh_hr = self.T * (
+            self.l * (density.sum(axis=0) @ np.array([self.lanes[i] for i in range(self.num_segments)]))
+            + queue.sum()
+        )
+        V_fd = calculate_V_arr(density[0:-1], self.vsl_speeds, self.params["a"], self.params["p_crit"], self.params["v_free"])
+        return density, velocity, queue, flow_origin, V_fd, total_travel_time
