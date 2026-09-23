@@ -7,7 +7,7 @@ from typing import cast
 from sim_types import *
 
 import numpy as np
-from traffic_sim import _get_time_space_param, run_metanet_sim_end, run_metanet_sim_opt, METANET_Simulator
+from traffic_sim import _get_time_space_param, METANET_Simulator
 from pyomo.util.infeasible import log_infeasible_constraints
 import logging
 
@@ -33,15 +33,12 @@ def mpc_opt_shooting(T, l, num_segments, traffic_demand, downstream_density,
                      horizon_p, horizon_c, starting_traffic_vars, lanes,
                      params, speed_lb=40):
 
+    sim = METANET_Simulator(T=T, l=l, params=params, lanes=lanes, real_data=False)
     def objective(vsl_flat):
         vsl = vsl_flat.reshape(horizon_p, num_segments)
         # clip to bounds before simulating
         vsl = np.clip(vsl, speed_lb, 150)
-        density, velocity, flow_or, queue = run_metanet_sim_end(
-            T, l, starting_traffic_vars,
-            traffic_demand, downstream_density,
-            params, vsl_speeds=vsl, lanes=lanes, real_data=False
-        )[0]
+        density, velocity, flow_or, queue = sim.run(traffic_demand, downstream_density, starting_traffic_vars, vsl)[0]
         tts = T * np.sum(density * lanes * l) + T * np.sum(queue)
         return tts
 
@@ -168,11 +165,9 @@ def mpc_opt(
     # Warm-start initialisation
     # ------------------------------------------------------------------
     if init_vsl is not None:
-        density_ws, velocity_ws, queue_ws, flow_or_ws, v_fd_ws, _ = run_metanet_sim_opt(
-            T, l, starting_traffic_vars,
-            traffic_demand[0:horizon_p+1], downstream_density[0:horizon_p],
-            params, lanes=lanes,
-            vsl_speeds=init_vsl[0:horizon_p, :], real_data=False,
+        sim = METANET_Simulator(T=T, l=l, params=params, lanes=lanes, real_data=False)
+        density_ws, velocity_ws, queue_ws, flow_or_ws, v_fd_ws, _ = sim.run_with_opt(
+            traffic_demand[0:horizon_p+1], downstream_density[0:horizon_p], starting_traffic_vars, init_vsl[0:horizon_p, :]
         )
         v_fd_ws = np.minimum(v_fd_ws[0:horizon_p, :], init_vsl[0:horizon_p, :])
 
@@ -405,10 +400,10 @@ def mpc_opt(
     #             vsl_chk[h, m] = _get_time_space_param(v_free, h, m)
 
     # # 2. Simulate
-    # d_s, v_s, q_s, fo_s, vfd_s, _ = run_metanet_sim(
-    #     T, l, starting_traffic_vars,
+    # sim = METANET_Simulator(T=T, l=l, params=params, lanes=lanes, real_data=False)
+    # d_s, v_s, q_s, fo_s, vfd_s, _ = sim.run_with_opt(
     #     traffic_demand[0:horizon_p+1], downstream_density[0:horizon_p],
-    #     params, lanes=lanes, vsl_speeds=vsl_chk, opt=True, real_data=False)
+    #     starting_traffic_vars, vsl_speeds=vsl_chk)
 
     # # 3. Load into the model
     # for h in range(horizon_p + 1):
@@ -507,7 +502,8 @@ def mpc_opt(
 
     return iters, solve_time, vsl_speeds_c, vsl_speeds_p
 
-def param_slice(params: MetanetParams, start_time_step, end_time_step, total_time_steps, desired_length=None):
+def param_slice(params: MetanetParams, start_time_step, end_time_step, total_time_steps, desired_length=None
+                ) -> MetanetParams:
     sliced_params = {}
     for key, value in params.items():
         if isinstance(value, np.ndarray) and value.shape[0] == total_time_steps:
@@ -519,7 +515,7 @@ def param_slice(params: MetanetParams, start_time_step, end_time_step, total_tim
                 assert sliced_params[key].shape[0] == desired_length, f"Parameter {key} has length {sliced_params[key].shape[0]}, expected {desired_length}"
         else:
             sliced_params[key] = value
-    return sliced_params
+    return cast(MetanetParams, sliced_params)
 
 def mpc_find_vsl(
     total_time_steps: int, 
@@ -594,18 +590,19 @@ def mpc_find_vsl(
                 print(f"[MPC] t = {t}")
 
             assert params is not None
-            params_mpc = param_slice(params, t, t+pred_horizon, sim_time, desired_length=pred_horizon)
+            params_mpc: MetanetParams = param_slice(params, t, t+pred_horizon, sim_time, desired_length=pred_horizon)
+
+            sim = METANET_Simulator(T=T, l=l, params=params_mpc, lanes=lanes, real_data=False)
 
             # During warm-up, apply free-flow VSL and advance state without solving
             if t < warmup_time:
                 vsl_ctrl = np.full((control_horizon, num_segments), 150.0)
                 full_control = np.vstack((full_control, vsl_ctrl)) if full_control is not None else vsl_ctrl
-                state = run_metanet_sim_end(
-                    T, l, state,
-                    traffic_demand[t: t + control_horizon + 1],
-                    downstream_density[t: t + control_horizon],
-                    params_mpc, vsl_speeds=vsl_ctrl, lanes=lanes, real_data=False,
-                )[0]
+
+                state = sim.run(traffic_demand[t: t + control_horizon + 1], 
+                    downstream_density[t: t + control_horizon], 
+                    state, vsl_speeds=vsl_ctrl)[0]
+
                 t += control_horizon
                 continue
 
@@ -630,12 +627,9 @@ def mpc_find_vsl(
             prev_full_solution = vsl_full.copy()   # save for next iteration
             full_control = np.vstack((full_control, vsl_ctrl)) if full_control is not None else vsl_ctrl
 
-            state = run_metanet_sim_end(
-                T, l, state,
-                traffic_demand[t: t + control_horizon + 1],
-                downstream_density[t: t + control_horizon],
-                params_mpc, vsl_speeds=vsl_ctrl, lanes=lanes, real_data=False,
-            )[0]
+            state = sim.run(traffic_demand[t: t + control_horizon + 1], 
+                downstream_density[t: t + control_horizon], 
+                state, vsl_speeds=vsl_ctrl)[0]
 
             t          += control_horizon
             solve_time += ytime

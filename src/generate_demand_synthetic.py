@@ -1,9 +1,8 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import os
 from itertools import product
-from traffic_sim import *
+from traffic_sim import METANET_Simulator
 from mpc_metanet import *
 from param_loader import METANET_Params
 import matplotlib.colors as mcolors
@@ -61,15 +60,15 @@ def generate_demand_options(num_options, sim_time, time_step, num_segments, seg_
 
     peak_options = np.linspace(peak_min, peak_max, num_options, endpoint=True)
     demand_scenarios = list(product(peak_options, duration_range))
+    sim = METANET_Simulator(T=sim_time, l=seg_length, params=sim_params, lanes=lanes, real_data=False)
+
     for peak_demand, peak_duration in demand_scenarios:
         demand_profile = generate_demand(sim_time, time_step, flow_standard=flow_standard, flow_peak=peak_demand, peak_start=0.055, peak_end=0.055 + peak_duration)
         demand_options[(peak_demand, peak_duration)] = demand_profile
-        start_state = (np.full(num_segments, demand_profile[0]/(sim_lanes[0] * 90)), np.full(num_segments, 90), demand_profile[0], 0)
+        start_state = MetanetState(np.full(num_segments, demand_profile[0]/(sim_lanes[0] * 90)), np.full(num_segments, 90), demand_profile[0], 0)
 
         num_time_steps = int(sim_time / time_step)
-        travel_time = run_metanet_sim_end(time_step, seg_length, start_state, demand_profile, np.zeros(num_time_steps), 
-                                      sim_params, lanes=lanes, real_data=False, vsl_speeds=None)[1]
- 
+        _, travel_time = sim.run(demand_profile, np.zeros(num_time_steps), start_state, None)
 
         travel_times[(peak_demand, peak_duration)] = travel_time
 

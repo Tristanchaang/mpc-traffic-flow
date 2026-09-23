@@ -19,7 +19,6 @@ import pyomo.environ as pyo
 from dataclasses import dataclass, asdict, field
 from sim_types import *
 
-from traffic_sim import run_metanet_sim
 from viz import Plotter
 
 CALIB_PARAM_NAMES = ["eta_high", "tau", "K", "rho_crit", "v_free", "a"]   # <<<
@@ -867,21 +866,13 @@ def metanet_param_fit_robust(
     #     # # Simulate v and rho for each scenario using warmstart params
 
     #     # num_lanes = np.load(f"{warmstart}/num_lanes.npy")
-
+    #     # sim = METANET_Simulator(T=T, l=l, params=params, real_data=False,
+    #     #     lanes={i: num_lanes[i] for i in range(num_calibrated_segments)}
+    #     # )
     #     # for s in range(S):
     #     #     init_traffic_state = (rho_hat[0, :] / num_lanes, v_hat[0, :], inflow_s[s, 0, 0], 0)
-
-    #     #     rho_sim, v_sim, _, tts_sim = run_metanet_sim(
-    #     #         T, 
-    #     #         l, 
-    #     #         init_traffic_state,
-    #     #         inflow_s[s, :, 0],
-    #     #         downstream_density,
-    #     #         params,
-    #     #         vsl_speeds=None,
-    #     #         lanes={i: num_lanes[i] for i in range(num_calibrated_segments)},
-    #     #         plotting=True,
-    #     #         real_data=True
+    #     #     rho_sim, v_sim, _, tts_sim = sim.run_with_history(
+    #     #         inflow_s[s, :, 0], downstream_density,starting_traffic_vars, vsl_speeds=None,
     #     #     )
 
     #     #     v_init[:, :, s] = v_sim[0:-1, :].copy()
