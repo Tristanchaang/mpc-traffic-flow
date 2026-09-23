@@ -11,3 +11,4 @@ src/__pycache__/
 **/__pycache__/
 
 run_nb.sh
+**.nbconvert.ipynb

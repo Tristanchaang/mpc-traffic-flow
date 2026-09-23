@@ -189,11 +189,6 @@ def metanet_step(t: int,
 
     return density_tp1, velocity_tp1, queue_tp1, flow_origin_tp1, flow_tp1
 
-def run_metanet_sim_plottable(*args, **kwargs) -> tuple[time_space, time_space, time_space, veh_hr]:
-    x = run_metanet_sim(*args, **kwargs, plotting=True)
-    assert(len(x) == 4)
-    return x
-
 def run_metanet_sim_end(*args, **kwargs) -> tuple[MetanetState, veh_hr]:
     x = run_metanet_sim(*args, **kwargs, plotting=False, opt=False)
     assert(len(x) == 2)
@@ -290,22 +285,18 @@ def run_metanet_sim(T: hr, l: km,
 # TODO: USE METANET_State to simplify step() function (State -> State)
 class METANET_Simulator:
     """Wrapper class for running METANET simulations with a given set of parameters and initial state."""
-    def __init__(self, T: hr, l: km, time_steps: int, num_segments: int, params: MetanetParams, 
-                 lanes: lane_map | None = None, real_data: bool = False):
-
-        self.time_steps: int = time_steps
-        self.num_segments: int = num_segments
+    def __init__(self, T: hr, l: km, params: MetanetParams, lanes: lane_map | None = None, real_data: bool = False):
         self.real_data: bool = real_data
-
         self.T: hr = T
         self.l: km = l
-
         self.params: MetanetParams = params
-
         self.lanes: lane_map = lanes if lanes is not None and len(lanes) > 0 else {i: 1 for i in range(self.num_segments)}
 
     def _initialize(self, demand: time_vec, downstream_density: time_vec, 
                     init_traffic_state: MetanetState, vsl_speeds: time_space | None = None):
+        self.time_steps: int = len(demand)
+        self.num_segments: int = len(init_traffic_state.density)
+        
         self.downstream_density: time_vec = downstream_density
         self.demand: time_vec = demand
         self.vsl_speeds: time_space = vsl_speeds if vsl_speeds is not None else np.full((self.time_steps, self.num_segments), 1000)

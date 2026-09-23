@@ -39,7 +39,7 @@ from archive.cc_analysis import (                    # noqa: E402
     L, time_step,
     load_day_data, get_ff_tts,
 )
-from traffic_sim import run_metanet_sim_plottable      # noqa: E402
+from traffic_sim import METANET_Simulator  # noqa: E402
 
 DATE = "11_30"
 SWEEP_ROOT = I24_RESULTS / f"i24_{DATE}" / DEFAULT_CALIBRATION
@@ -71,12 +71,8 @@ def load_baseline(date=DATE):
     """Uncontrolled delay for `date`, against which every sweep run is scored."""
     day = load_day_data(date)
     params = day["static_params"]
-
-    _, _, _, tts_base = run_metanet_sim_plottable(
-        time_step, L, day["init_state"], day["data_inflow"],
-        day["ds_density_norm"], params, lanes=day["lane_dict"],
-        vsl_speeds=None, real_data=True,
-    )
+    sim = METANET_Simulator(T=time_step, l=L, params=params, lanes=day["lane_dict"], real_data=True)
+    _, tts_base = sim.run(day["data_inflow"], day["ds_density_norm"], day["init_state"])
     v_free = params["v_free"]
     ff_ttt = get_ff_tts(day["data_inflow"], time_step, L,
                         np.max(v_free, axis=0) if v_free.ndim == 2 else v_free)
@@ -91,13 +87,9 @@ def is_fallback(vsl):
 def cc_for(path, day, params, delay_base, ff_ttt):
     """Controllable congestion for one saved VSL run, or None if it failed."""
     vsl = np.load(path)
-    if is_fallback(vsl):
-        return None
-    _, _, _, tts = run_metanet_sim_plottable(
-        time_step, L, day["init_state"], day["data_inflow"],
-        day["ds_density_norm"], params, lanes=day["lane_dict"],
-        vsl_speeds=vsl, real_data=False,
-    )
+    if is_fallback(vsl): return None
+    sim = METANET_Simulator(T=time_step, l=L, params=params, lanes=day["lane_dict"], real_data=True)
+    _, tts = sim.run(day["data_inflow"], day["ds_density_norm"], day["init_state"])
     return float(np.clip((delay_base - (tts - ff_ttt)) / delay_base * 100, 0, 100))
 
 

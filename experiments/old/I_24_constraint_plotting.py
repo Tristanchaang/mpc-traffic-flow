@@ -15,7 +15,8 @@ from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.ticker import AutoMinorLocator
 
 sys.path.append('../src')  # ADAPT: match your notebook's sys.path setup
-from traffic_sim import run_metanet_sim, run_metanet_sim_plottable
+from sim_types import MetanetState
+from traffic_sim import METANET_Simulator
 from param_loader import METANET_Params
 from generate_demand_synthetic import get_ff_tts
 
@@ -111,17 +112,14 @@ else:
     model_params = METANET_Params(path=cal_path, num_timesteps=time_steps,
                                    num_segments=num_segments).get_params()
 
-init_state = (true_density_initial, true_velocity_initial, data_inflow[start_time_step], 0)
+init_state = MetanetState(true_density_initial, true_velocity_initial, data_inflow[start_time_step], 0)
 
 # ---------------------------------------------------------------------------
 # Baseline (uncontrolled) run + free-flow travel time (metanet_params.ipynb cell 39)
 # ---------------------------------------------------------------------------
-_, _, _, tts_baseline = run_metanet_sim_plottable(
-    time_step, L, init_state,
-    data_inflow[start_time:], downstream_density[start_time:],
-    model_params, lanes=lane_dict, vsl_speeds=None,
-    real_data=True,
-)
+sim = METANET_Simulator(T=time_step, l=L, params=model_params, lanes=lane_dict, real_data=False)
+_, tts_baseline = sim.run(data_inflow[start_time:], downstream_density[start_time:], init_state)
+
 ff_ttt = get_ff_tts(data_inflow, time_step, L, model_params['v_free'])
 delay_baseline = tts_baseline - ff_ttt
 
@@ -139,12 +137,11 @@ for value in constraint_values:
 
     opt_vsl = np.load(vsl_path)
     print(opt_vsl.shape)
-    _, _, _, tts_opt = run_metanet_sim_plottable(
-        time_step, L, init_state,
-        data_inflow[start_time:start_time + opt_time],
-        downstream_density[start_time:start_time + opt_time],
-        model_params, vsl_speeds=opt_vsl, lanes=lane_dict,
-        real_data=False,
+
+    _, tts_opt = sim.run(
+        data_inflow[start_time:start_time + opt_time], 
+        downstream_density[start_time:start_time + opt_time], 
+        init_state, vsl_speeds=opt_vsl
     )
 
     opt_delay = tts_opt - ff_ttt

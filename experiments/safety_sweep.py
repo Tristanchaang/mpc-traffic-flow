@@ -15,13 +15,15 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+from sim_types import MetanetState
+
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _SRC_DIR = os.path.join(_THIS_DIR, "..", "src")
 if _SRC_DIR not in sys.path:
     sys.path.append(_SRC_DIR)
 
 from paths import DEFAULT_CALIBRATION, FIGS_ROOT, I24_DATA, I24_RESULTS
-from traffic_sim import run_metanet_sim_plottable
+from traffic_sim import METANET_Simulator
 from param_loader import METANET_Params
 from generate_demand_synthetic import get_ff_tts
 
@@ -125,19 +127,17 @@ def load_data(
             path=cal_path, num_timesteps=time_steps, num_segments=num_segments,
         ).get_params()
 
-    init_state = (
+    init_state = MetanetState(
         true_density_initial,
         true_velocity_initial,
         data_inflow[start_time_step],
         0,
     )
 
-    vsl_baseline = np.ones((downstream_density.shape[0], num_segments)) * 150
-    _, v_baseline, _, tts_baseline = run_metanet_sim_plottable(
-        time_step, L, init_state,
-        data_inflow[start_time:], downstream_density[start_time:],
-        model_params, lanes=lane_dict, vsl_speeds=vsl_baseline,
-        real_data=False,
+    sim = METANET_Simulator(T=time_step, l=L, params=model_params, lanes=lane_dict, real_data=False)
+    _, v_baseline, _, tts_baseline = sim.run_with_history(
+        data_inflow[start_time:], downstream_density[start_time:], init_state, 
+        vsl_speeds=np.ones((downstream_density.shape[0], num_segments)) * 150
     )
 
     control_zone = [i for i in range(2, num_segments)]

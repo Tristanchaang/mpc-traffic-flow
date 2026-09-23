@@ -25,7 +25,8 @@ sys.path.insert(0, os.path.join(REPO, "src"))
 
 from paths import fig, synthetic_results         # noqa: E402
 from param_loader import METANET_Params          # noqa: E402
-from traffic_sim import run_metanet_sim, run_metanet_sim_plottable          # noqa: E402
+from traffic_sim import METANET_Simulator        # noqa: E402
+from sim_types import MetanetState
 
 DEMAND_DIR = synthetic_results("demand")
 SAVE_PATH = fig("synthetic_demand_tsd.png")
@@ -39,7 +40,7 @@ NUM_SEGMENTS = int(TOTAL_DISTANCE / SEG_LENGTH)   # 25
 FLOW_STANDARD = 4000                              # veh/hr
 PEAK_START = 0.055                                # hours
 PEAK_DURATION = 0.5                               # hours
-LANES = {i: 4 if i < NUM_SEGMENTS - 5 else 2 for i in range(NUM_SEGMENTS)}
+LANES = {i: 4. if i < NUM_SEGMENTS - 5 else 2. for i in range(NUM_SEGMENTS)}
 
 BOTTLENECK_KM = (NUM_SEGMENTS - 5) * SEG_LENGTH   # 8.0 km, where 4 lanes -> 2
 CONTROL_ZONE_START_KM = 10 * SEG_LENGTH           # 4.0 km, first controlled segment
@@ -84,15 +85,13 @@ def run_scenario(peak_demand, params):
     mpc_time_steps = time_steps + 40 - 5            # 755
 
     demand = generate_demand(peak_demand)
-    start_state = (np.full(NUM_SEGMENTS, demand[0] / (LANES[0] * 90)),
+    start_state = MetanetState(np.full(NUM_SEGMENTS, demand[0] / (LANES[0] * 90)),
                    np.full(NUM_SEGMENTS, 90.0),
                    demand[0],
                    0)
 
-    _, v_uc, _, tts_uc = run_metanet_sim_plottable(
-        TIME_STEP, SEG_LENGTH, start_state, demand, np.zeros(time_steps),
-        params, lanes=LANES, real_data=False, vsl_speeds=None,
-    )
+    sim = METANET_Simulator(T=TIME_STEP, l=SEG_LENGTH, params=params, lanes=LANES, real_data=False)
+    _, v_uc, _, tts_uc = sim.run_with_history(demand, np.zeros(time_steps), start_state)
 
     policy = os.path.join(DEMAND_DIR, f"demand{float(peak_demand)}_duration{PEAK_DURATION}.csv")
     if not os.path.exists(policy):
@@ -105,11 +104,8 @@ def run_scenario(peak_demand, params):
     while len(demand_padded) < mpc_time_steps + 1:
         demand_padded = np.append(demand_padded, demand_padded[-1])
 
-    _, v_c, _, tts_c = run_metanet_sim_plottable(
-        TIME_STEP, SEG_LENGTH, start_state,
-        demand_padded[0:time_steps], np.zeros(mpc_time_steps + 1)[0:time_steps],
-        params, lanes=LANES, vsl_speeds=optimal_vsl,
-        real_data=False, 
+    _, v_c, _, tts_c = sim.run_with_history(
+        demand_padded[0:time_steps], np.zeros(mpc_time_steps + 1)[0:time_steps], start_state, optimal_vsl
     )
 
     ff = free_flow_tts(demand, float(params["v_free"][0]))

@@ -5,9 +5,11 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
+from sim_types import MetanetState
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from param_loader import METANET_Params
-from traffic_sim import run_metanet_sim, run_metanet_sim_plottable
+from traffic_sim import METANET_Simulator
 
 # ── Simulation parameters ────────────────────────────────────────────────────
 L          = 0.4
@@ -92,7 +94,7 @@ def load_day_data(date):
     d_trimmed       = density_data[:, 1:-1] / lane_counts
     ds_density_norm = downstream_density / lane_dict[num_segments - 1]
     d0_norm         = true_density_initial / lane_counts
-    init_state      = (d0_norm, true_velocity_initial, data_inflow[0], 0)
+    init_state      = MetanetState(d0_norm, true_velocity_initial, data_inflow[0], 0)
 
     return {
         'flow_data':       flow_data,
@@ -115,11 +117,8 @@ def run_one_day(init_state, data_inflow, ds_density_norm, model_params,
     Run baseline + VSL simulations for one calibration variant.
     Returns a dict of metrics, or None if the VSL file is missing.
     """
-    p_sim, v_sim, _, tts_sim = run_metanet_sim_plottable(
-        time_step, L, init_state, data_inflow, ds_density_norm,
-        model_params, lanes=lane_dict, vsl_speeds=None,
-        real_data=True
-    )
+    sim = METANET_Simulator(T=time_step, l=L, params=model_params, lanes=lane_dict, real_data=True)
+    p_sim, v_sim, _, tts_sim = sim.run_with_history(data_inflow, ds_density_norm, init_state)
     p_sim = p_sim[:-1, :]
     v_sim = v_sim[:-1, :]
 
@@ -129,11 +128,9 @@ def run_one_day(init_state, data_inflow, ds_density_norm, model_params,
         print(f"  VSL file not found: {vsl_path}")
         return None
 
-    p_opt, v_opt, _, tts_opt = run_metanet_sim_plottable(
-        time_step, L, init_state, data_inflow, ds_density_norm,
-        model_params, lanes=lane_dict, vsl_speeds=vsl,
-        real_data=False
-    )
+    sim.real_data = False
+    p_opt, v_opt, _, tts_opt = sim.run_with_history(data_inflow, ds_density_norm, init_state, vsl)
+
     v_opt = v_opt[:-1, :]
     p_opt = p_opt[:-1, :]
 

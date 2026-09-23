@@ -139,6 +139,7 @@ def optimize_scenarios(num_options, filepath, sim_time, time_step, num_segments,
     avg_speed_arr = np.zeros((num_durations, num_peaks))
 
     peak_options = np.linspace(peak_min, peak_max, num_options, endpoint=True)
+    sim = METANET_Simulator(T=time_step, l=seg_length, params=sim_params, lanes=lanes, real_data=False)
     for i_dur, peak_duration in enumerate(duration_range):
         for i_peak, peak_demand in enumerate(peak_options):
             tts_arr[i_dur, i_peak] = tts[(peak_demand, peak_duration)]
@@ -153,7 +154,7 @@ def optimize_scenarios(num_options, filepath, sim_time, time_step, num_segments,
                 demand_profile = np.append(demand_profile, demand_profile[-1])
 
             policy_dir = filepath + f"/demand{peak_demand}_duration{peak_duration}.csv" #+ f"/policy_demand{peak_demand}_duration{peak_duration}"
-            start_state = (np.full(num_segments, demand_profile[0]/(sim_lanes[0] * 90)), np.full(num_segments, 90), demand_profile[0], 0)
+            start_state = MetanetState(np.full(num_segments, demand_profile[0]/(sim_lanes[0] * 90)), np.full(num_segments, 90), demand_profile[0], 0)
             init_vsl = np.full((time_steps, num_segments), 40)
             #print(init_vsl.shape, demand_profile.shape, downstream_density.shape, time_steps)
             if not os.path.exists(policy_dir):
@@ -179,15 +180,13 @@ def optimize_scenarios(num_options, filepath, sim_time, time_step, num_segments,
                         v_fd_penalty=10000,
                         control_zone=np.arange(10, num_segments) 
                 )   
-                _, velocities, _, vsl_travel_time = run_metanet_sim_plottable(time_step, seg_length, start_state, demand_profile[0:time_steps], downstream_density[0:time_steps], 
-                                                                    sim_params, lanes=lanes, vsl_speeds=optimal_vsl, real_data=False)
+                _, vsl_travel_time = sim.run(demand_profile[0:time_steps], downstream_density[0:time_steps], start_state, optimal_vsl)
                 opt_tts_arr[i_dur, i_peak] = vsl_travel_time
                 np.savetxt(policy_dir, optimal_vsl, delimiter=',')
             else:
                 optimal_vsl = np.loadtxt(policy_dir, delimiter=',')
                 print(sim_time)
-                _, velocities, _, vsl_travel_time = run_metanet_sim_plottable(time_step, seg_length, start_state, demand_profile[0:time_steps], downstream_density[0:time_steps], 
-                                                                    sim_params, lanes=lanes, vsl_speeds=optimal_vsl, real_data=False)
+                _, vsl_travel_time = sim.run(demand_profile[0:time_steps], downstream_density[0:time_steps], start_state, optimal_vsl)
                 opt_tts_arr[i_dur, i_peak] = vsl_travel_time
 
             print(optimal_vsl.shape)
@@ -196,8 +195,7 @@ def optimize_scenarios(num_options, filepath, sim_time, time_step, num_segments,
             ff_tt_arr[i_dur, i_peak] = get_ff_tts(demand_profile, time_step, seg_length * num_segments, sim_params['v_free'][0])
             avg_tt_arr[i_dur, i_peak] = tts[(peak_demand, peak_duration)] / get_num_veh(demand_profile, time_step) * 60
             # print(np.shape(velocities[int(35/(60 * time_step)), 10:]))
-            _, nc_velocities, _, _ = run_metanet_sim_plottable(time_step, seg_length, start_state, demand_profile[0:time_steps], 
-                              np.zeros(time_steps), sim_params, lanes=lanes, real_data=False, vsl_speeds=None)
+            _, nc_velocities, _, _ = sim.run_with_history(demand_profile[0:time_steps], downstream_density[0:time_steps], start_state)
             avg_speed_arr[i_dur, i_peak] = np.mean(nc_velocities[100:, 10:]) * 0.62
 
     return tts_arr, opt_tts_arr, ff_tt_arr, avg_tt_arr, avg_speed_arr

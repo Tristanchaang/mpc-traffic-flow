@@ -30,7 +30,7 @@ from archive.cc_analysis import (                    # noqa: E402
     L, time_step,
     load_day_data, get_ff_tts, format_date_label,
 )
-from traffic_sim import run_metanet_sim_plottable      # noqa: E402
+from traffic_sim import METANET_Simulator # noqa: E402
 
 SAVE_PATH = fig("i24_tsd.png")
 
@@ -47,20 +47,14 @@ def run_day(date):
     day = load_day_data(date)
     params = day["static_params"]
 
-    _, v_sim, _, tts_sim = run_metanet_sim_plottable(
-        time_step, L, day["init_state"], day["data_inflow"],
-        day["ds_density_norm"], params, lanes=day["lane_dict"],
-        vsl_speeds=None, real_data=True,
-    )
+    sim = METANET_Simulator(T=time_step, l=L, params=params, lanes=day["lane_dict"], real_data=True)
+    _, v_sim, _, tts_sim = sim.run_with_history(day["data_inflow"], day["ds_density_norm"], day["init_state"])
 
     vsl_path = I24_RESULTS / f"i24_{date}" / DEFAULT_CALIBRATION / "optimal_vsl.npy"
     vsl = np.load(vsl_path)
 
-    _, v_opt, _, tts_opt = run_metanet_sim_plottable(
-        time_step, L, day["init_state"], day["data_inflow"],
-        day["ds_density_norm"], params, lanes=day["lane_dict"],
-        vsl_speeds=vsl, real_data=False,
-    )
+    sim.real_data = False
+    _, v_opt, _, tts_opt = sim.run_with_history(day["data_inflow"], day["ds_density_norm"], day["init_state"], vsl_speeds=vsl)
 
     v_free = params["v_free"]
     ff_ttt = get_ff_tts(day["data_inflow"], time_step, L,

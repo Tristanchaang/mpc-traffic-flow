@@ -64,9 +64,8 @@ class RobustOptConfig:
     objective_mode: str = "minmax"
     lam_worst: float = 0.2   
 
-
 from scipy.ndimage import uniform_filter1d
-def smooth_inflow(inflow, window_size=2) -> time_space:
+def smooth_inflow(inflow, window_size=2):
     return uniform_filter1d(inflow,size=window_size, axis=0, mode="nearest", output=np.float64)
 
 def fit_fd1(

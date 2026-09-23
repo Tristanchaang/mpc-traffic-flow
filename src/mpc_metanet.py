@@ -7,7 +7,7 @@ from typing import cast
 from sim_types import *
 
 import numpy as np
-from traffic_sim import _get_time_space_param, run_metanet_sim_end, run_metanet_sim_plottable, run_metanet_sim_opt
+from traffic_sim import _get_time_space_param, run_metanet_sim_end, run_metanet_sim_opt, METANET_Simulator
 from pyomo.util.infeasible import log_infeasible_constraints
 import logging
 
@@ -78,26 +78,27 @@ def mpc_opt(
     # ------------------------------------------------------------------
     # Parameters
     # ------------------------------------------------------------------
-    if params is None:
-        v_free   = np.array([120.0] * num_segments)
-        a        = np.array([1.4]   * num_segments)
-        p_crit   = np.array([37.45] * num_segments)
-        q_cap    = np.array([2200.0]* num_segments)
-        K        = np.array([40.0]  * num_segments)
-        tau      = np.array([18/3600] * num_segments)
-        eta_high = np.array([30.0]  * num_segments)
-        r        = np.array([0.0]   * num_segments)
-        beta     = np.array([0.0]   * num_segments)
-    else:
-        v_free   = params['v_free']
-        a        = params['a']
-        p_crit   = params['p_crit']
-        q_cap    = params['q_capacity']
-        K        = params['K']
-        tau      = params['tau']
-        eta_high = params['eta_high']
-        r        = params['r']
-        beta     = params['beta']
+    params = params if params is not None else MetanetParams(
+        tau = np.array([18/3600] * num_segments),
+        K = np.array([40.0]  * num_segments),
+        eta_high = np.array([30.0]  * num_segments),
+        p_crit = np.array([37.45] * num_segments),
+        v_free = np.array([120.0] * num_segments),
+        a = np.array([1.4]   * num_segments),
+        q_capacity = np.array([2200.0]* num_segments),
+        r = np.array([0.0]   * num_segments),
+        beta = np.array([0.0]   * num_segments),
+        gamma = np.array([0.0]   * num_segments)
+    )
+    v_free   = params['v_free']
+    a        = params['a']
+    p_crit   = params['p_crit']
+    q_cap    = params['q_capacity']
+    K        = params['K']
+    tau      = params['tau']
+    eta_high = params['eta_high']
+    r        = params['r']
+    beta     = params['beta']
 
     p_max = 180.0
     initial_density, initial_velocity, initial_flow_or, initial_queue = starting_traffic_vars
@@ -492,11 +493,12 @@ def mpc_opt(
                                     for m in seg_range] 
                                     for h in range(1, horizon_c)])
 
-    actual_density, actual_velocity, _, _ = run_metanet_sim_plottable(
-        T, l, starting_traffic_vars,
+    sim = METANET_Simulator(T=T, l=l, params=params, lanes=lanes, real_data=False)
+    
+    actual_density, actual_velocity, _, _ = sim.run_with_history(
         traffic_demand[0: horizon_c+1],
         downstream_density[0: horizon_c],
-        params, vsl_speeds=vsl_speeds_c, lanes=lanes, real_data=False
+        starting_traffic_vars, vsl_speeds=vsl_speeds_c
     )
 
     density_error = np.abs(predicted_density - actual_density[1:-1]).mean()

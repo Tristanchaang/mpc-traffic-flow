@@ -1,8 +1,9 @@
 import numpy as np
-import traffic_sim as sim
+from traffic_sim import METANET_Simulator
 from param_loader import METANET_Params
 import csv
 import plotting
+
 
 def generate_perturbations(signal, percent_noise=0.1, seed=0, num=100):
     # Add noise_std percent gaussian noise to the whole signal
@@ -63,17 +64,9 @@ def J_cost(v_sim, v_hat, p_sim, p_hat, T):
 def eval_robustness_static(v_gt, params, data_inflow, downstream_density, init_state, lanes, 
                            T=10/3600, l=0.4, percent_noises=[0.1], plotting_dir=None, save_results=False, rho_gt=None):
     noise_results = []
+    sim = METANET_Simulator(T=T, l=l, params=params, lanes=lanes, real_data=True)
     for percent_noise in percent_noises:
-        true_rho_sim, true_v_sim, _, _ = sim.run_metanet_sim_plottable(T,
-                                        l,
-                                        init_state,
-                                        data_inflow,
-                                        downstream_density,
-                                        params, 
-                                        vsl_speeds=None,
-                                        lanes=lanes,
-                                        real_data=True)
-        true_error = mape(v_gt, true_v_sim[0:-1, :])
+        true_rho_sim, true_v_sim, _, _ = sim.run_with_history(data_inflow, downstream_density, init_state)
 
         errors = []
         plotting_v_sim = None
@@ -83,17 +76,8 @@ def eval_robustness_static(v_gt, params, data_inflow, downstream_density, init_s
             J = J_cost(true_v_sim[0:-1, :], v_gt, true_rho_sim[0:-1, :], rho_gt, v_gt.shape[0])
 
 
-
         for perturbed_conditions in generate_perturbations(data_inflow, percent_noise=percent_noise):
-            rho_sim, v_sim, _, _ = sim.run_metanet_sim_plottable(T,
-                                        l,
-                                        init_state,
-                                        perturbed_conditions,
-                                        downstream_density,
-                                        params, 
-                                        vsl_speeds=None,
-                                        lanes=lanes,
-                                        real_data=True)
+            rho_sim, v_sim, _, _ = sim.run_with_history(perturbed_conditions, downstream_density, init_state)
             
             error = mape(v_gt, v_sim[0:-1, :])
             errors.append(error)
@@ -141,6 +125,7 @@ def eval_robustness_dynamic(v_gt, control_len, params_dir, data_inflow, downstre
 
     params = METANET_Params(params_dir, control_h=control_len, 
                             num_timesteps=v_gt.shape[0], num_segments=v_gt.shape[1]).get_params()
+    sim = METANET_Simulator(T=T, l=l, params=params, lanes=lanes, real_data=True)
     for percent_noise in percent_noises:
         # true_rho_sim, true_v_sim = mpc.simulate_multiple_params(init_traffic_state,
         #                                         downstream_density,
@@ -150,17 +135,7 @@ def eval_robustness_dynamic(v_gt, control_len, params_dir, data_inflow, downstre
         #                                         control_len,
         #                                         params_dir)
         
-
-        
-        true_rho_sim, true_v_sim, _, _ = sim.run_metanet_sim_plottable(T,
-                                        l,
-                                        init_traffic_state,
-                                        data_inflow,
-                                        downstream_density,
-                                        params, 
-                                        vsl_speeds=None,
-                                        lanes=lanes,
-                                        real_data=True)
+        true_rho_sim, true_v_sim, _, _ = sim.run_with_history(data_inflow, downstream_density, init_traffic_state)
         true_rho_sim = true_rho_sim[0:-1, :]
         true_v_sim = true_v_sim[0:-1, :]
         
