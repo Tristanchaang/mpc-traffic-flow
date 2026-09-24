@@ -1,0 +1,21 @@
+run experiments/*_plotting.py code
+
+and run_safety_sweep.ipynb
+
+try to gen fig on paper
+
+
+initial viz dashboard
+
+upload data
+
+CC flow
+show gt data
+shows as it solves
+plot of error etc
+html
+
+
+merge into main
+
+then branch for viz

@@ -29,10 +29,10 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from viz import Plotter
-
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "src"))
+
+from viz import Plotter
 
 from paths import fig, I24_RESULTS, DEFAULT_CALIBRATION           # noqa: E402
 from archive.cc_analysis import (                    # noqa: E402
@@ -88,8 +88,8 @@ def cc_for(path, day, params, delay_base, ff_ttt):
     """Controllable congestion for one saved VSL run, or None if it failed."""
     vsl = np.load(path)
     if is_fallback(vsl): return None
-    sim = METANET_Simulator(T=time_step, l=L, params=params, lanes=day["lane_dict"], real_data=True)
-    _, tts = sim.run(day["data_inflow"], day["ds_density_norm"], day["init_state"])
+    sim = METANET_Simulator(T=time_step, l=L, params=params, lanes=day["lane_dict"], real_data=False)
+    _, tts = sim.run(day["data_inflow"], day["ds_density_norm"], day["init_state"], vsl_speeds = vsl)
     return float(np.clip((delay_base - (tts - ff_ttt)) / delay_base * 100, 0, 100))
 
 
