@@ -15,13 +15,12 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sim_types import MetanetState
-
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _SRC_DIR = os.path.join(_THIS_DIR, "..", "src")
 if _SRC_DIR not in sys.path:
     sys.path.append(_SRC_DIR)
 
+from sim_types import MetanetState
 from paths import DEFAULT_CALIBRATION, FIGS_ROOT, I24_DATA, I24_RESULTS
 from traffic_sim import METANET_Simulator
 from param_loader import METANET_Params
@@ -136,7 +135,7 @@ def load_data(
 
     sim = METANET_Simulator(T=time_step, l=L, params=model_params, lanes=lane_dict, real_data=False)
     _, v_baseline, _, tts_baseline = sim.run_with_history(
-        data_inflow[start_time:], downstream_density[start_time:], init_state, 
+        data_inflow[start_time_step:], downstream_density[start_time_step:], init_state, 
         vsl_speeds=np.ones((downstream_density.shape[0], num_segments)) * 150
     )
 

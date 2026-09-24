@@ -22,9 +22,15 @@ class Plotter:
       if self.rows == 1 or self.cols == 1: return self.axs[id]
       else: return self.axs[id//self.cols, id%self.cols]
     else:
-      if self.rows == self.cols == 1: return self.axs
-      if self.rows == 1: return self.axs[1, id]
-      if self.cols == 1: return self.axs[id, 1]
+      if self.rows == self.cols == 1:
+        assert id == (0, 0)
+        return self.axs
+      if self.rows == 1: 
+        assert id[0] == 0
+        return self.axs[id[1]]
+      if self.cols == 1: 
+        assert id[1] == 0
+        return self.axs[id[0]]
       else: return self.axs[id]
 
   def __setitem__(self, id: int | tuple, kwargs: dict):
@@ -44,4 +50,4 @@ class Plotter:
     for ax in self: 
       if ax.get_legend_handles_labels()[1]: ax.legend()
     # plt.tight_layout()
-    plt.savefig(*args, **kwargs)
+    self.fig.savefig(*args, **kwargs)

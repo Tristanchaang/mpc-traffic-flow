@@ -6,19 +6,11 @@ from sim_types import *
 
 def density_dynamics(current: float, inflow: float, outflow: float, lanes: float, T: hr, l: km,
                      gamma: float = 1.0, beta: float = 0.0, r: float = 0.0) -> float:
-    """Update density with conservation equation (per segment).
-    """
+    """Update density with conservation equation (per segment). """
     return max(1e-4, current + T / (l * lanes) * (inflow - outflow / (1 - beta) + r))
-
-
-def flow_dynamics(density: float, velocity: float, lanes: float) -> float:
-    """Fundamental relation: q = rho * v * lanes."""
-    return density * velocity * lanes
-
 
 def queue_dynamics(current: float, demand: float, flow_origin: float, T: hr) -> float:
     return current + T * (demand - flow_origin)
-
 
 def calculate_V(rho: float, v_ctrl: float, a: float, p_crit: float, v_free: float = 150.0) -> float:
     """Desired speed function V(rho), capped by control speed v_ctrl."""

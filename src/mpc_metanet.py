@@ -297,8 +297,7 @@ def mpc_opt(
                 (control_one_segment is not None and m != control_one_segment)
             )
 
-            v_ff = _get_time_space_param(v_free, h-1, m) * pyo.exp(-(1/_get_time_space_param(a, h-1, m)) 
-                                                                   * (model.density[h-1, m] / _get_time_space_param(p_crit, h-1, m))**_get_time_space_param(a, h-1, m))
+            v_ff = _get_time_space_param(v_free, h-1, m) * pyo.exp(-(1/_get_time_space_param(a, h-1, m)) * (model.density[h-1, m] / _get_time_space_param(p_crit, h-1, m))**_get_time_space_param(a, h-1, m))
 
             if uncontrolled:
                 con.add(model.v_fd[h - 1, m] == v_ff)

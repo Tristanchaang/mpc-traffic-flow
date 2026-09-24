@@ -56,15 +56,15 @@ def plot_nocontrol_control(traffic_demand, downstream_density, vsl_control, lane
     
     if params is not None:
         sim = METANET_Simulator(T=T, l=l, params=params, lanes=lane_map, real_data=False)
-        p_nocontrol, v_nocontrol, tts_nocontrol, queue_nocontrol = sim.run_with_history(
+        p_nocontrol, v_nocontrol, queue_nocontrol, tts_nocontrol = sim.run_with_history(
             traffic_demand, downstream_density, start_state
         )
-        p_optimal, v_optimal, tts_optimal, queue_optimal = sim.run_with_history(
+        p_optimal, v_optimal, queue_optimal, tts_optimal = sim.run_with_history(
             traffic_demand, downstream_density, start_state, vsl_control
         )
     else:
-        p_nocontrol, v_nocontrol,  queue_nocontrol, tts_nocontrol= np.array([0, 0, 0, 0])#metanet_sim(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, plotting=True, lanes=lane_map)
-        p_optimal, v_optimal,   queue_optimal, tts_optimal, = np.array([0, 0, 0, 0])#metanet_sim(T, l, start_state, vsl_control, traffic_demand, downstream_density, plotting=True, lanes=lane_map)
+        p_nocontrol, v_nocontrol, queue_nocontrol, tts_nocontrol= np.array([0, 0, 0, 0])#metanet_sim(T, l, start_state, np.full((time_steps, num_segm), v_free), traffic_demand, downstream_density, plotting=True, lanes=lane_map)
+        p_optimal, v_optimal, queue_optimal, tts_optimal, = np.array([0, 0, 0, 0])#metanet_sim(T, l, start_state, vsl_control, traffic_demand, downstream_density, plotting=True, lanes=lane_map)
 
     total_inflow = np.sum(np.array(traffic_demand[0:time_steps]) * T)
     freeflow_tts = total_inflow * (num_segm * l) / v_free
