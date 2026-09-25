@@ -32,3 +32,5 @@ dependencies:
 
   # Testing
   - pytest
+
+  - tabulate

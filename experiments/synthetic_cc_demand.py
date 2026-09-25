@@ -32,6 +32,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import REPO_DIR
 
 from synthetic_demand_tsd import (        # noqa: E402
     NUM_SEGMENTS,
@@ -40,9 +41,7 @@ from synthetic_demand_tsd import (        # noqa: E402
     REPO,
 )
 
-from paths import fig                         # noqa: E402
-
-SAVE_PATH = fig("synthetic_cc_demand.png")
+SAVE_PATH = REPO_DIR / "figs" / "synthetic_cc_demand.png"
 
 PEAK_MIN, PEAK_MAX, NUM_SCENARIOS = 5100, 6500, 29
 TEXT_FONTSIZE = 18

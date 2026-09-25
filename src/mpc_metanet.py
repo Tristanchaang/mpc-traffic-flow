@@ -1,3 +1,4 @@
+import sys
 import time
 import json
 
@@ -10,6 +11,8 @@ import numpy as np
 from traffic_sim import _get_time_space_param, METANET_Simulator
 from pyomo.util.infeasible import log_infeasible_constraints
 import logging
+
+from tqdm import tqdm
 
 class MPCModel(pyo.ConcreteModel):
     vsl: IndexedVar
@@ -497,9 +500,9 @@ def mpc_opt(
 
     density_error = np.abs(predicted_density - actual_density[1:-1]).mean()
     velocity_error = np.abs(predicted_velocity - actual_velocity[1:-1]).mean()
-    print(f"Density mismatch: {density_error:.4f}, Velocity mismatch: {velocity_error:.4f}")
+    # print(f"Density mismatch: {density_error:.4f}, Velocity mismatch: {velocity_error:.4f}")
 
-    return iters, solve_time, vsl_speeds_c, vsl_speeds_p
+    return iters, solve_time, vsl_speeds_c, vsl_speeds_p, density_error, velocity_error
 
 def param_slice(params: MetanetParams, start_time_step, end_time_step, total_time_steps, desired_length=None
                 ) -> MetanetParams:
@@ -540,6 +543,17 @@ def mpc_find_vsl(
     solve_time   = 0.0
     iterations   = 0
 
+    progress = tqdm(
+        total=sim_time,
+        desc="MPC",
+        unit="step",
+        dynamic_ncols=True,
+        disable=not verbose,
+        file=sys.stdout,
+        leave=True,
+    )
+    progress.refresh()
+
     # init_fixed may be a single value/"adaptive" (kept for backward compatibility)
     # or a list of fallback constants to cycle through in order.
     if init_fixed is None:
@@ -570,6 +584,10 @@ def mpc_find_vsl(
 
         last_exc = Exception
         for i, (label, overrides) in enumerate(attempts):
+            progress.set_description_str(
+                f"MPC t={t_start} | {label}",
+                refresh=True,
+            )
             try:
                 return mpc_opt(T, l, num_segments,
                                 traffic_demand[t_start: t_start + p_h + 1],
@@ -578,15 +596,17 @@ def mpc_find_vsl(
             except ValueError as exc:
                 last_exc = exc
                 if i < len(attempts) - 1:
-                    print(f"[MPC t={t_start}] Attempt '{label}' failed: {exc}\n  Trying next fallback.")
+                    next_label = attempts[i + 1][0]
+                    # print(f"[MPC t={t_start}] Attempt '{label}' failed: {exc}\n  Trying next fallback.")
+                    progress.set_description(f"MPC t={t_start} | trying {next_label}", refresh=True)
         raise last_exc
 
     prev_full_solution = None
 
     try:
         while t + pred_horizon <= sim_time:
-            if verbose and t % control_horizon == 0:
-                print(f"[MPC] t = {t}")
+            # if verbose and t % control_horizon == 0:
+            #     print(f"[MPC] t = {t}")
 
             assert params is not None
             params_mpc: MetanetParams = param_slice(params, t, t+pred_horizon, sim_time, desired_length=pred_horizon)
@@ -603,6 +623,7 @@ def mpc_find_vsl(
                     state, vsl_speeds=vsl_ctrl)[0]
 
                 t += control_horizon
+                progress.update(control_horizon)
                 continue
 
             # ------------------------------------------------------------------
@@ -622,7 +643,7 @@ def mpc_find_vsl(
             else:
                 init_slice = None
 
-            n_iters, ytime, vsl_ctrl, vsl_full = _solve(t, pred_horizon, control_horizon, state, init_slice, params_mpc)
+            n_iters, ytime, vsl_ctrl, vsl_full, d_e, v_e = _solve(t, pred_horizon, control_horizon, state, init_slice, params_mpc)
             prev_full_solution = vsl_full.copy()   # save for next iteration
             full_control = np.vstack((full_control, vsl_ctrl)) if full_control is not None else vsl_ctrl
 
@@ -630,19 +651,23 @@ def mpc_find_vsl(
                 downstream_density[t: t + control_horizon], 
                 state, vsl_speeds=vsl_ctrl)[0]
 
-            t          += control_horizon
+            t += control_horizon
+            progress.update(control_horizon)
+            mismatch_tol, messages = 1e-3, []
+            if d_e > mismatch_tol: messages.append(f"density mismatch={d_e:.4g}")
+            if v_e > mismatch_tol: messages.append(f"velocity mismatch={v_e:.4g}")
+            if messages: tqdm.write(f"[MPC t={t}] " + ", ".join(messages))
             solve_time += ytime
             iterations += n_iters
 
         # Tail step
         if t < sim_time:
-            print(t)
-            print(sim_time-t)
             assert params is not None
             params_mpc = param_slice(params, t, sim_time, sim_time, desired_length=pred_horizon+1)
             init_slice = initialize_vsl[t:] if initialize_vsl is not None else None
 
-            n_iters, ytime, vsl_ctrl, vsl_full = _solve(t, sim_time - t, sim_time - t, state, init_slice, params_mpc)
+            n_iters, ytime, vsl_ctrl, vsl_full, d_e, v_e = _solve(t, sim_time - t, sim_time - t, state, init_slice, params_mpc)
+            progress.update(sim_time - t)
             assert full_control is not None
             full_control = np.vstack([full_control, vsl_ctrl])
             solve_time  += ytime
@@ -652,6 +677,9 @@ def mpc_find_vsl(
         print(f"[MPC] Solver failed at t={t} after exhausting all warm-start tiers: {exc}\n"
               f"  Abandoning this run — saving VSL=150 everywhere (do-nothing control) for the full horizon.")
         return np.full((sim_time, num_segments), 150.0)
+
+    finally:
+        progress.close()
 
     if verbose:
         n_solves = (total_time_steps // control_horizon +

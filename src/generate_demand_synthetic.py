@@ -11,7 +11,7 @@ import sys
 from viz import Plotter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import synthetic_results, fig
+from paths import REPO_DIR
 
 
 def generate_demand(sim_time, time_step, peak_start=0.25, peak_end=0.75, flow_standard=2400, flow_peak=3000):
@@ -227,7 +227,7 @@ if __name__ == "__main__":
     text_fontsize = 20
 
 
-    tts, opt_tts, ff_tt, avg_tt, avg_speed = optimize_scenarios(num_scenarios, synthetic_results("demand"), 2, 10/3600, num_segments, 0.4, params, sim_lanes, peak_min=p_min, peak_max=p_max, flow_standard=4000, duration_range=durations)
+    tts, opt_tts, ff_tt, avg_tt, avg_speed = optimize_scenarios(num_scenarios, REPO_DIR / "results" / "synthetic_10km" / "demand", 2, 10/3600, num_segments, 0.4, params, sim_lanes, peak_min=p_min, peak_max=p_max, flow_standard=4000, duration_range=durations)
     peak_demand = np.linspace(p_min, p_max, num_scenarios, endpoint=True)
     demand_options, _ = generate_demand_options(num_scenarios, 2, 10/3600, num_segments, 0.4, params, sim_lanes, peak_min=p_min, peak_max=p_max, flow_standard=4000, duration_range= durations)
 
@@ -272,7 +272,7 @@ if __name__ == "__main__":
             # 'title': "Stacked Delay and Controllable Congestion Across 20 Scenarios",
             'ylim': (0, np.max(avg_delay)*1.1)}
 
-    p.savefig(fig("delay_reduction.png"), dpi=300, bbox_inches='tight', pad_inches=0.1)
+    p.savefig(REPO_DIR / "figs" / "delay_reduction.png", dpi=300, bbox_inches='tight', pad_inches=0.1)
     p.show()
     
 

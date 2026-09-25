@@ -34,7 +34,8 @@ sys.path.insert(0, os.path.join(REPO, "src"))
 
 from viz import Plotter
 
-from paths import fig, I24_RESULTS, DEFAULT_CALIBRATION           # noqa: E402
+from paths import DEFAULT_CALIBRATION           # noqa: E402
+from paths import REPO_DIR
 from archive.cc_analysis import (                    # noqa: E402
     L, time_step,
     load_day_data, get_ff_tts,
@@ -42,9 +43,9 @@ from archive.cc_analysis import (                    # noqa: E402
 from traffic_sim import METANET_Simulator  # noqa: E402
 
 DATE = "11_30"
-SWEEP_ROOT = I24_RESULTS / f"i24_{DATE}" / DEFAULT_CALIBRATION
-SAVE_PATH = fig("i24_constraints.png")
-HEATMAP_SAVE_PATH = fig("i24_safety_heatmap.png")
+SWEEP_ROOT = REPO_DIR / "results" / "i24" / f"i24_{DATE}" / DEFAULT_CALIBRATION
+SAVE_PATH = REPO_DIR / "figs" / "i24_constraints.png"
+HEATMAP_SAVE_PATH = REPO_DIR / "figs" / "i24_safety_heatmap.png"
 
 # Fixed value of the *other* bound in each smoothness slice, in km/hr. Chosen
 # for coverage: these rows/columns of the grid have the most successful runs.
@@ -242,7 +243,7 @@ def plot(hold, speed, temporal, spatial, save_path=SAVE_PATH):
     p.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
     print(f"\nFigure saved to: {save_path}")
     mpl.rcParams["font.family"] = original_font
-    return fig
+    return p.fig
 
 
 def plot_heatmap(grid, save_path=HEATMAP_SAVE_PATH, annotate=True, min_points=3):

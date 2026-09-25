@@ -6,10 +6,10 @@ import pandas as pd
 from sympy import divisors
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import synthetic_results
+from paths import REPO_DIR
 
 def warm_starts_min_speedlimit(i, sim_time, num_segments, params, control_zone, path=None):
-    path = synthetic_results("min_speedlimit") if path is None else path
+    path = REPO_DIR / "results" / "synthetic_10km" / "min_speedlimit" if path is None else path
     warm_starts = dict()
     # warm_starts['free_flow'] = np.full((sim_time, num_segments), params['v_free'])
     warm_starts['min_speed'] = np.full((sim_time, num_segments), params['v_free'])
@@ -32,7 +32,7 @@ def warm_starts_min_speedlimit(i, sim_time, num_segments, params, control_zone, 
     return warm_starts
 
 def warm_starts_hold_len(i, sim_time, num_segments, params, control_zone, path=None):
-    path = synthetic_results("holdlength") if path is None else path
+    path = REPO_DIR / "results" / "synthetic_10km" / "holdlength" if path is None else path
     warm_starts = dict()
     warm_starts['free_flow'] = np.full((sim_time, num_segments), params['v_free'])
     warm_starts['min_speed'] = np.full((sim_time, num_segments), params['v_free'])
@@ -99,7 +99,7 @@ def warm_starts_hold_len(i, sim_time, num_segments, params, control_zone, path=N
     return warm_starts
 
 def warm_starts_hold_len_shifted(i, sim_time, num_segments, params, control_zone, path=None):
-    path = synthetic_results("holdlength_shifted") if path is None else path
+    path = REPO_DIR / "results" / "synthetic_10km" / "holdlength_shifted" if path is None else path
     warm_starts = dict()
     warm_starts['free_flow'] = np.full((sim_time, num_segments), params['v_free'])
     warm_starts['min_speed'] = np.full((sim_time, num_segments), params['v_free'])
@@ -137,7 +137,7 @@ def warm_starts_hold_len_shifted(i, sim_time, num_segments, params, control_zone
     return warm_starts
 
 def warm_starts_spatial_safety(i, sim_time, num_segments, params, control_zone, path=None):
-    path = synthetic_results("spatial_safety") if path is None else path
+    path = REPO_DIR / "results" / "synthetic_10km" / "spatial_safety" if path is None else path
     warm_starts = dict()
     warm_starts['min_speed'] = np.full((sim_time, num_segments), params['v_free'])
     warm_starts['min_speed'][:, control_zone] = 40
@@ -180,7 +180,7 @@ def warm_starts_spatial_safety(i, sim_time, num_segments, params, control_zone, 
     return warm_starts
 
 def warm_starts_temporal_safety(i, sim_time, num_segments, params, control_zone, path=None):
-    path = synthetic_results("temporal_safety") if path is None else path
+    path = REPO_DIR / "results" / "synthetic_10km" / "temporal_safety" if path is None else path
     warm_starts = dict()
     warm_starts['free_flow'] = np.full((sim_time, num_segments), params['v_free'])
     warm_starts['min_speed'] = np.full((sim_time, num_segments), params['v_free'])
@@ -217,7 +217,7 @@ def warm_starts_temporal_safety(i, sim_time, num_segments, params, control_zone,
     return warm_starts
 
 def warm_starts_one_gantry(i, sim_time, num_segments, params, control_zone, path=None):
-    path = synthetic_results("gantry") if path is None else path
+    path = REPO_DIR / "results" / "synthetic_10km" / "gantry" if path is None else path
     warm_starts = dict()
     warm_starts['free_flow'] = np.full((sim_time, num_segments), params['v_free'])
     warm_starts['min_speed'] = np.full((sim_time, num_segments), params['v_free'])

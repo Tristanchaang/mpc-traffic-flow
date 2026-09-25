@@ -8,6 +8,8 @@ preset_figsizes = {
   (1, 4): (20, 5),
 }
 
+plt.rcParams.update({'font.family': 'Times New Roman'})
+
 class Plotter:
   def __init__(self, rows: int, cols: int, figsize = None):
     if figsize is None and (rows, cols) in preset_figsizes: 
@@ -43,7 +45,6 @@ class Plotter:
     for ax in self: 
       if ax.get_legend_handles_labels()[1]: ax.legend()
     plt.tight_layout()
-    plt.rcParams.update({'font.family': 'Times New Roman'})
     plt.show()
 
   def savefig(self, *args, **kwargs):
@@ -51,3 +52,21 @@ class Plotter:
       if ax.get_legend_handles_labels()[1]: ax.legend()
     # plt.tight_layout()
     self.fig.savefig(*args, **kwargs)
+
+colors = {
+    'red': '\033[91m',
+    'green': '\033[92m',
+    'yellow': '\033[93m',
+    'blue': '\033[94m',
+    'magenta': '\033[95m',
+    'cyan': '\033[96m',
+    'white': '\033[97m',
+    'bold': '\033[1m',
+    'underline': '\033[4m',
+    'end': '\033[0m'
+  }
+def colored_helper(text, color):
+  return f"{colors.get(color, '')}{text}{colors['end']}"
+def colored(text, *colors):
+  for c in colors: text = colored_helper(text, c)
+  return text

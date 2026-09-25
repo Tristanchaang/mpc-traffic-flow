@@ -16,9 +16,8 @@ L          = 0.4
 time_step  = 10 / 3600
 total_time = 1   # hours
 
-# Re-exported under their historical names: experiments/i24_tsd.py and
-# experiments/i24_constraints.py import RESULTS_ROOT from this module.
-from paths import I24_DATA as DATA_ROOT, I24_RESULTS as RESULTS_ROOT, fig
+# Re-exported under their historical names: experiments/i24_tsd.py
+from paths import REPO_DIR
 
 
 def mape(y_true, y_pred):
@@ -64,10 +63,10 @@ def load_day_data(date):
     Load MOTION data for a single date and build the shared boundary
     conditions / static-calibration parameters needed by any VSL run.
     """
-    root_path = f"{DATA_ROOT}/i24_{date}"
+    root_path = REPO_DIR / "data" / "i24" / f"i24_{date}"
 
-    flow_data    = np.load(root_path + "/q_hat.npy")
-    density_data = np.load(root_path + "/rho_hat.npy")
+    flow_data    = np.load(root_path  / "q_hat.npy")
+    density_data = np.load(root_path / "rho_hat.npy")
     density_data = np.where(density_data == 0.0, 1e-3, density_data)
     flow_data    = np.where(flow_data    == 0.0, 1e-3, flow_data)
     velocity_data = flow_data / density_data
@@ -167,7 +166,7 @@ def run_one_day(init_state, data_inflow, ds_density_norm, model_params,
 def run_static_for_date(date):
     """Run the static-calibration VSL simulation for one date."""
     day = load_day_data(date)
-    static_vsl_path = f"{RESULTS_ROOT}/i24_{date}/calibration_static/fixed_ramping/optimal_vsl.npy"
+    static_vsl_path = REPO_DIR / "results" / "i24" / f"i24_{date}" / "calibration_static" / "fixed_ramping" / "optimal_vsl.npy"
 
     print("  Running static calibration simulations...")
     return run_one_day(
@@ -180,7 +179,7 @@ def run_static_for_date(date):
 def run_static_and_dynamic_for_date(date):
     """Run both the static- and dynamic-calibration VSL simulations for one date."""
     day = load_day_data(date)
-    static_vsl_path = f"{RESULTS_ROOT}/i24_{date}/calibration_static/fixed_ramping/optimal_vsl.npy"
+    static_vsl_path = REPO_DIR / "results" / "i24" / f"i24_{date}" / "calibration_static" / "fixed_ramping" / "optimal_vsl.npy"
 
     print("  Running static calibration simulations...")
     static_metrics = run_one_day(
@@ -191,7 +190,7 @@ def run_static_and_dynamic_for_date(date):
     if static_metrics is None:
         return None, None
 
-    dyn_cal_path = f"{DATA_ROOT}/i24_{date}/calibration_dynamic"
+    dyn_cal_path = REPO_DIR / "data" / "i24" / f"i24_{date}" / "calibration_dynamic"
     dyn_params = METANET_Params(
         path=dyn_cal_path,
         num_timesteps=day['flow_data'].shape[0],
@@ -199,7 +198,7 @@ def run_static_and_dynamic_for_date(date):
         control_h=90
     ).get_params()
 
-    dyn_vsl_path = f"{RESULTS_ROOT}/i24_{date}/calibration_dynamic/control_h_90/optimal_vsl.npy"
+    dyn_vsl_path = REPO_DIR / "results" / "i24" / f"i24_{date}" / "calibration_dynamic" / "control_h_90" / "optimal_vsl.npy"
 
     print("  Running dynamic calibration simulations...")
     dyn_metrics = run_one_day(
@@ -512,8 +511,8 @@ def run_static_analysis(dates, columns=None, save_path=None,
     """
     # Resolved here rather than in the signature so the defaults follow
     # FIGS_ROOT instead of the caller's working directory.
-    save_path = fig("i24_cc_table.png") if save_path is None else save_path
-    bar_chart_save_path = (fig("i24_avg_delay_bar.png")
+    save_path = REPO_DIR / "figs" / "i24_cc_table.png" if save_path is None else save_path
+    bar_chart_save_path = (REPO_DIR / "figs" / "i24_avg_delay_bar.png"
                            if bar_chart_save_path is None else bar_chart_save_path)
 
     results = []
@@ -541,7 +540,7 @@ def run_static_analysis(dates, columns=None, save_path=None,
 
 def run_static_dynamic_analysis(dates, save_path=None):
     """Run the static+dynamic sweep over `dates` and save/plot the results table."""
-    save_path = fig("i24_cc_table_withdyn.png") if save_path is None else save_path
+    save_path = REPO_DIR / "figs" / "i24_cc_table_withdyn.png" if save_path is None else save_path
     results = []
     for date in dates:
         print(f"\n── {date} ──────────────────────────────────")

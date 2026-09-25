@@ -24,14 +24,15 @@ sys.path.insert(0, os.path.join(REPO, "src"))
 
 from viz import Plotter
 
-from paths import fig, I24_RESULTS, DEFAULT_CALIBRATION           # noqa: E402
+from paths import DEFAULT_CALIBRATION           # noqa: E402
+from paths import REPO_DIR
 from archive.cc_analysis import (                    # noqa: E402
     L, time_step,
     load_day_data, get_ff_tts, format_date_label,
 )
 from traffic_sim import METANET_Simulator # noqa: E402
 
-SAVE_PATH = fig("i24_tsd.png")
+SAVE_PATH = REPO_DIR / "figs" / "i24_tsd.png"
 
 DATES = ["11_28", "12_02"]
 # Segments 0 and 1 are left uncontrolled (see Section 5.2); the control zone
@@ -49,7 +50,7 @@ def run_day(date):
     sim = METANET_Simulator(T=time_step, l=L, params=params, lanes=day["lane_dict"], real_data=True)
     _, v_sim, _, tts_sim = sim.run_with_history(day["data_inflow"], day["ds_density_norm"], day["init_state"])
 
-    vsl_path = I24_RESULTS / f"i24_{date}" / DEFAULT_CALIBRATION / "optimal_vsl.npy"
+    vsl_path = REPO_DIR / "results" / "i24" / f"i24_{date}" / DEFAULT_CALIBRATION / "optimal_vsl.npy"
     vsl = np.load(vsl_path)
 
     sim.real_data = False

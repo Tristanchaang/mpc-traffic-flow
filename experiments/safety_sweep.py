@@ -21,7 +21,8 @@ if _SRC_DIR not in sys.path:
     sys.path.append(_SRC_DIR)
 
 from sim_types import MetanetState
-from paths import DEFAULT_CALIBRATION, FIGS_ROOT, I24_DATA, I24_RESULTS
+from paths import DEFAULT_CALIBRATION
+from paths import REPO_DIR
 from traffic_sim import METANET_Simulator
 from param_loader import METANET_Params
 from generate_demand_synthetic import get_ff_tts
@@ -68,8 +69,8 @@ def load_data(
     """
     start_time_step = int(start_time / time_step)
 
-    data_path = I24_DATA / f"i24_{date}" if data_path is None else data_path
-    results_path = I24_RESULTS / f"i24_{date}" / calibration_id / \
+    data_path = REPO_DIR / "data" / "i24" / f"i24_{date}" if data_path is None else data_path
+    results_path = REPO_DIR / "results" / f"i24_{date}" / calibration_id / \
         (f"control_h_{calibration_interval}" if calibration_interval else "") / "safety_sweep"
     cal_path = (
         f"{data_path}/{calibration_id}"
@@ -171,7 +172,7 @@ def load_data(
 DEFAULT_SAFETY_TEMPORAL_VALUES = (0.5, 1, 2, 3, 4, 5, 7.5, 10, 15, 20, 25)
 DEFAULT_SAFETY_SPATIAL_VALUES = (0.5, 1, 2, 3, 4, 5, 7.5, 10, 15, 20, 25)
 
-FIGS_DIR = FIGS_ROOT
+FIGS_DIR = REPO_DIR / "figs"
 
 
 def main(
