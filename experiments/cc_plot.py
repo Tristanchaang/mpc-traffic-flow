@@ -71,7 +71,6 @@ p[0].grid()
 p.savefig(REPO_DIR / "fig_new" / "optimal_vsl.png")
 print(f"Saved to {colored('fig_new/optimal_vsl.png', 'green')}")
 
-simulator.real_data = False
 (p_baseline, v_baseline, _, tts_baseline), (p_opt, v_opt, queue, tts_opt) = \
   (simulator.run_with_history(
     demand = data_inflow[start_time_step:],

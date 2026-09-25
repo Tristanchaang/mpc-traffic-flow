@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="View METANET velocity and density results by road segment and time.">
+  <title>Traffic Viewer</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <h1>Traffic viewer</h1>
+      <label class="scenario-picker" for="scenario-select">
+        <span>Scenario</span>
+        <select id="scenario-select" disabled><option>Finding scenarios…</option></select>
+      </label>
+      <div class="scenario-meta" id="scenario-meta"></div>
+    </header>
+
+    <div class="error-panel" id="error-panel" hidden>
+      <b>Couldn’t load results.</b>
+      <span id="error-message"></span>
+    </div>
+
+    <div class="loading-panel" id="loading-panel" role="status">
+      <i></i><span>Loading traffic state…</span>
+    </div>
+
+    <div id="visualization" hidden>
+      <section class="panel road-card" aria-label="Road state by segment">
+        <div class="section-heading">
+          <h2>Road state</h2>
+          <time id="road-time">07:30:00</time>
+        </div>
+
+        <div class="road-key" aria-label="Road visualization legend">
+          <span><i class="key-flow"></i> Moving pattern shows velocity</span>
+          <span><i class="key-density"></i> Fill height shows density</span>
+        </div>
+
+        <div class="road-shell">
+          <div class="direction-label"><span>West</span><span>I-24</span><span>East</span></div>
+          <div class="road-surface" id="road-surface"></div>
+          <div class="road-caption"><span>Segment 1 · 0.0 km</span><span id="road-end"></span></div>
+        </div>
+
+        <div class="current-values" aria-label="Current network averages">
+          <span>Mean velocity <strong><span id="current-speed">—</span> km/h</strong></span>
+          <span>Mean density <strong><span id="current-density">—</span> veh/km/lane</strong></span>
+        </div>
+      </section>
+
+      <section class="transport" aria-label="Playback controls">
+        <button class="play" id="play-button" aria-label="Play animation">▶</button>
+        <span class="time-code" id="time-code">07:30:00</span>
+        <input id="timeline" type="range" min="0" value="0" aria-label="Simulation time">
+        <span class="step-code" id="step-code"></span>
+        <label class="speed-control" for="playback-speed">
+          <span>Speed</span>
+          <select id="playback-speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="stats-grid" aria-label="Scenario summary">
+        <article><span>Travel time</span><strong id="travel-time">—</strong><small>veh-hr</small></article>
+        <article><span>Mean velocity</span><strong id="mean-velocity">—</strong><small>km/h</small></article>
+        <article><span>Peak density</span><strong id="peak-density">—</strong><small>veh/km/lane</small></article>
+        <article><span>Peak queue</span><strong id="peak-queue">—</strong><small>vehicles</small></article>
+      </section>
+
+      <section class="diagrams">
+        <article class="panel diagram-card">
+          <div class="diagram-heading"><h2>Velocity</h2><span>km/h</span></div>
+          <canvas class="heatmap" id="velocity-heatmap" height="270" tabindex="0" role="slider" aria-label="Velocity time-space diagram"></canvas>
+          <div class="legend velocity" aria-hidden="true"><span>0</span><i></i><span id="velocity-max"></span></div>
+        </article>
+
+        <article class="panel diagram-card">
+          <div class="diagram-heading"><h2>Density</h2><span>veh/km/lane</span></div>
+          <canvas class="heatmap" id="density-heatmap" height="270" tabindex="0" role="slider" aria-label="Density time-space diagram"></canvas>
+          <div class="legend density" aria-hidden="true"><span>0</span><i></i><span id="density-max"></span></div>
+        </article>
+      </section>
+
+      <footer>
+        <span id="source-path"></span>
+        <span id="resolution"></span>
+      </footer>
+    </div>
+  </main>
+</body>
+</html>
